@@ -49,7 +49,7 @@ Bu projede, veri kümesindeki teknik parametreler kullanılarak mesafeye dayalı
 
 | Üye | Rolü ve Sorumlulukları |
 | :--- | :--- |
-| **Mert Ali Dağ** | **Kodlama & Araştırmacı  :** model mimarilerinin (KNN, Random Forest) kurulması, kod yazımı ve performans metriklerinin analizi. yapılan argo |
+| **Mert Ali Dağ** | **Kodlama & Araştırmacı  :** model mimarilerinin (KNN, Random Forest) kurulması, kod yazımı ve performans metriklerinin analizi. rakip/benzer yaklaşımların incelenmesi, sonuçların raporlanması |
 | **Gürkan Tural** | **Veri Analisti:** Veri temizleme, keşifçi veri analizi (EDA), donanım değişkenleri arası korelasyon incelemesi ve veri görselleştirme çalışmaları. |
 | **Efe Erdem** | **Araştırmacı & Veri Analzii :** Veri ön işleme Sınıflandırma problemi için rakip/benzer yaklaşımların incelenmesi, sonuçların raporlanması ve proje dokümantasyonu desteği. |
 
