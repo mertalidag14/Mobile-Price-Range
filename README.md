@@ -73,4 +73,25 @@ Bu projede, veri kümesindeki teknik parametreler kullanılarak mesafeye dayalı
 - **Random Forest (Rastgele Orman):**
   - **Kullanım Amacı:** Ağaç tabanlı topluluk (`Ensemble` / `Bagging`) sınıflandırması.
   - **Veri Hazırlığı:** Karar ağacı yapısı sayesinde ek bir ölçeklendirme gerektirmeden eğitildi.
-  - **Analiz Yeteneği:** Fiyat segmentini en çok etkileyen donanım bileşenlerini sıralamak için `Feature Importance` metriği kullanıldı.
+  - **Analiz Yeteneği:** Fiyat segmentini en çok etkileyen donanım bileşenlerini sıralamak için `Feature Importance` metriği kullanıldı.## 📊 Sistem Mimarisi ve UML Diyagramları
+
+Projede sistem yapısını, iş akışını ve kullanıcı etkileşimlerini modellemek için üç temel UML diyagramından yararlanılmıştır:
+### 1. Sınıf Diyagramı (Class Diagram)
+https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view
+
+Sistemdeki **yapısal** bileşenleri gösterir. Kodlamadaki sınıfları, bu sınıfların sahip olduğu özellikleri (değişken/alan) ve yapabildikleri işlemleri (metot/fonksiyon) kutular halinde çizer; sınıflar arası ilişkileri (kalıtım, bağlantı, sahiplik vb.) oklarla belirtir. Sistemin statik (değişmeyen) iskeletini ortaya koyar.
+
+---
+
+### 2. Aktivite Diyagramı (Activity Diagram)
+https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view
+
+Sistemin veya bir sürecin **iş akışını** adım adım gösterir. Başlangıçtan bitişe kadar hangi işlemlerin hangi sırayla yapıldığını, karar noktalarını (koşulları) ve paralel çalışan adımları akış şeması mantığıyla anlatır. Bir nevi yazılım/süreç algoritmasının görsel halidir.
+
+---
+
+### 3. Kullanım Senaryosu Diyagramı (Use Case Diagram)
+https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view
+
+Sistemi dışarıdan kullanan **aktörleri** (kullanıcı, admin, dış servis vb.) ve bu aktörlerin sistemden elde edebileceği **temel işlevleri** gösterir. *"Kim ne yapabilir?"* sorusuna odaklanır; teknik detaylara girmeden sistemin kapsamını ve kullanıcı etkileşimini özetler.
+  - 
