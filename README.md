@@ -94,4 +94,7 @@ Sistemin veya bir sürecin **iş akışını** adım adım gösterir. Başlangı
 https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view
 
 Sistemi dışarıdan kullanan **aktörleri** (kullanıcı, admin, dış servis vb.) ve bu aktörlerin sistemden elde edebileceği **temel işlevleri** gösterir. *"Kim ne yapabilir?"* sorusuna odaklanır; teknik detaylara girmeden sistemin kapsamını ve kullanıcı etkileşimini özetler.
+## 🚀 Proje Durumu ve Gelecek Hedefleri
+
+Projenin **demo sürümü tamamlanmıştır**. Mevcut aşamada temel veri analizi, ön işleme adımları ve sınıflandırma altyapısı oluşturulmuştur; proje geliştirilmeye devam edilerek ileriki aşamalarda kapsamı ve yetenekleri daha da ileriye taşınacaktır.
   - 
