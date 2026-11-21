@@ -127,22 +127,154 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 
 ## 📊 Sistem Mimarisi ve UML Diyagramları
 
-Projede yazılımın yapısal tasarımını standartlaştırmak, veri işleme adımlarının mantıksal akışını netleştirmek ve kullanıcı etkileşimlerini modellemek amacıyla üç temel UML diyagramından yararlanılmıştır:
+Projede yazılımın yapısal tasarımını standartlaştırmak, veri işleme adımlarının mantıksal akışını netleştirmek ve kullanıcı etkileşimlerini modellemek amacıyla üç temel UML diyagramından yararlanılmıştır. Diyagramlar, projeye eklenen **gerçek telefon veri seti (v2)** ve **TeknoTahmin web sitesi** ile birlikte güncellenmiştir. Projenin ilk hâline ait diyagramlar en altta bağlantı olarak duruyor.
 
 ### 1. Sınıf Diyagramı (Class Diagram)
-https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view
 
-Sistemin **statik (değişmeyen) yapısal iskeletini** ortaya koyar. Kodlama mimarisinde yer alan veri yükleme, ön işleme, model eğitimi ve değerlendirme sınıflarını; bu sınıfların sahip olduğu nitelikleri (değişken/alan) ve gerçekleştirdikleri operasyonları (metot/fonksiyon) modüler kutular halinde tanımlar. Sınıflar arasındaki kalıtım, bağımlılık ve sahiplik ilişkilerini oklarla göstererek kodun sürdürülebilirliğini ve nesne yönelimli tasarım prensiplerine uygunluğunu belgeler.
+Sistemin **statik (değişmeyen) yapısal iskeletini** ortaya koyar. Veri yükleme, ön işleme, model eğitimi, değerlendirme ve web arayüzü sınıflarını; bu sınıfların nitelik ve operasyonlarını ve aralarındaki ilişkileri gösterir.
+
+```mermaid
+classDiagram
+    direction LR
+    class VeriYukleyici {
+        +dosya_yolu: str
+        +veri_seti: v1_sentetik / v2_gercek
+        +oku() DataFrame
+    }
+    class VeriOnIsleyici {
+        +ozellikler: list
+        +eksik_degerleri_doldur()
+        +luks_uc_degerleri_cikar()
+        +segmentlere_bol(4 ceyrek)
+        +egitim_test_ayir(80/20)
+        +olceklendir(StandardScaler / MinMaxScaler)
+    }
+    class KesifciAnaliz {
+        +sinif_dagilimi()
+        +korelasyon_matrisi()
+        +boxplot_ciz()
+    }
+    class ModelEgitici {
+        +knn: KNeighborsClassifier
+        +rf: RandomForestClassifier
+        +xgb: XGBClassifier
+        +lgbm: LGBMClassifier
+        +grid_search()
+        +egit()
+    }
+    class ModelDegerlendirici {
+        +metrikler() Accuracy_Precision_Recall_F1
+        +confusion_matrix()
+        +cross_validation(5_fold)
+        +ogrenme_egrisi()
+        +ozellik_onemi()
+        +hata_analizi()
+    }
+    class ModelKaydedici {
+        +kaydet(pkl)
+        +yukle(pkl)
+    }
+    class Telefon {
+        +marka: str
+        +model: str
+        +fiyat_rupi: float
+        +ram, depolama, batarya
+        +islemci_hizi, ekran, kamera
+        +g5, hizli_sarj
+        +fiyat_tl() float
+    }
+    class Katalog {
+        +telefonlar: list~Telefon~
+        +filtrele(marka, segment, fiyat, 5G)
+        +sirala()
+        +ara(kelime)
+        +sayfala()
+    }
+    class TeknoTahminSitesi {
+        +model: RandomForestClassifier
+        +katalog: Katalog
+        +fiyat_tahmini(ozellikler) segment
+        +benzer_telefonlar()
+        +karsilastir(telefon1, telefon2)
+        +proje_hakkinda()
+    }
+    VeriYukleyici --> VeriOnIsleyici : ham veri
+    VeriOnIsleyici --> KesifciAnaliz : temiz veri
+    VeriOnIsleyici --> ModelEgitici : X_train, y_train
+    ModelEgitici --> ModelDegerlendirici : eğitilmiş modeller
+    ModelEgitici --> ModelKaydedici : en iyi model
+    Katalog "1" o-- "*" Telefon
+    TeknoTahminSitesi *-- Katalog
+    TeknoTahminSitesi ..> ModelEgitici : Random Forest kullanır
+```
 
 ### 2. Aktivite Diyagramı (Activity Diagram)
-https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view
 
-Sistemin uçtan uca **dinamik iş akışını** adım adım görselleştirir. Ham veri setinin sisteme alınmasından başlayarak veri temizleme, eksik değer kontrolü, ölçeklendirme karar noktaları (algoritma seçimine göre dallanma), model eğitimi ve performans metriklerinin raporlanmasına kadar tüm süreçleri akış şeması mantığıyla ifade eder.
+Sistemin uçtan uca **dinamik iş akışını** adım adım görselleştirir: veri setinin seçilmesi ve temizlenmesinden model eğitimine, değerlendirmeye ve modelin web sitesi olarak yayınlanmasına kadar.
+
+```mermaid
+flowchart TD
+    A([Başla]) --> B{Hangi veri seti?}
+    B -- "v1: Kaggle sentetik, 2000 satır" --> C[train.csv oku]
+    B -- "v2: 980 gerçek telefon, gerçek fiyat" --> D[gercek_telefonlar.csv oku]
+    D --> D1[Eksik değerleri doldur<br/>En pahalı %1'lik lüks telefonları çıkar]
+    D1 --> D2[Fiyata göre 4 eşit segmente böl]
+    C --> E[Keşifçi veri analizi<br/>sınıf dağılımı, korelasyon, boxplot]
+    D2 --> E
+    E --> F[Eğitim / test ayrımı %80 / %20]
+    F --> G{Algoritma ölçeklendirme ister mi?}
+    G -- "Evet: KNN" --> H[StandardScaler / MinMaxScaler karşılaştır]
+    G -- "Hayır: RF, XGBoost, LightGBM" --> I[Ham değerlerle devam et]
+    H --> J[GridSearchCV ile hiperparametre araması]
+    I --> J
+    J --> K[Modelleri eğit]
+    K --> L[Değerlendir: Accuracy, F1, Confusion Matrix,<br/>5-fold CV, öğrenme eğrisi, özellik önemi, hata analizi]
+    L --> M[En iyi modeli .pkl olarak kaydet]
+    M --> N[Modeli TeknoTahmin web sitesine entegre et]
+    N --> O[Docker ile paketle]
+    O --> P[Render üzerinde yayınla]
+    P --> Q[Kullanıcı tahmin alır, katalogda gezer, karşılaştırır]
+    Q --> R([Bitir])
+```
 
 ### 3. Kullanım Senaryosu Diyagramı (Use Case Diagram)
-https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view
 
-Sistemi dışarıdan kullanan **aktörleri** (veri analisti, araştırmacı, son kullanıcı vb.) ve bu aktörlerin sistem üzerinde gerçekleştirebileceği **temel işlevleri** (veri yükleme, model çalıştırma, tahmin sonucu görüntüleme, rapor inceleme vb.) tanımlar.
+Sistemi dışarıdan kullanan **aktörleri** ve bu aktörlerin sistem üzerinde gerçekleştirebileceği **temel işlevleri** tanımlar.
+
+```mermaid
+flowchart LR
+    kullanici(["👤 Son Kullanıcı"])
+    analist(["👤 Veri Analisti / Araştırmacı"])
+    gelistirici(["👤 Geliştirici"])
+
+    subgraph sistem["TeknoTahmin Sistemi"]
+        direction TB
+        uc1(("Fiyat segmenti tahmini al"))
+        uc2(("Katalogda telefon ara ve filtrele"))
+        uc3(("İki telefonu karşılaştır"))
+        uc4(("Proje sonuçlarını incele"))
+        uc5(("Veri setini yükle ve temizle"))
+        uc6(("Modelleri eğit ve karşılaştır"))
+        uc7(("Grafik ve rapor üret"))
+        uc8(("Modeli kaydet"))
+        uc9(("Siteyi Docker ile Render'da yayınla"))
+    end
+
+    kullanici --- uc1
+    kullanici --- uc2
+    kullanici --- uc3
+    kullanici --- uc4
+    analist --- uc5
+    analist --- uc6
+    analist --- uc7
+    analist --- uc4
+    gelistirici --- uc8
+    gelistirici --- uc9
+    uc6 -. include .-> uc8
+    uc1 -. include .-> uc8
+```
+
+> **İlk sürüm diyagramlar (v1, Google Drive):** [Sınıf Diyagramı](https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view) · [Aktivite Diyagramı](https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view) · [Kullanım Senaryosu Diyagramı](https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view)
 
 ---
 
