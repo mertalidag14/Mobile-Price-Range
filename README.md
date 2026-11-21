@@ -85,7 +85,7 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 | Üye | Rolü ve Sorumlulukları |
 | :--- | :--- |
 | **Mert Ali Dağ** | **Kodlama, Model Mimarisi & Web Geliştirme:** Veri ön işleme boru hatlarının (pipeline) kurulması, KNN ve Random Forest algoritmalarının kodlanması, hiperparametre ayarlamaları ve model performans metriklerinin teknik analizi. XGBoost/LightGBM karşılaştırması, cross-validation ve hata analizinin eklenmesi. Projenin 980 gerçek telefonluk veri setine taşınması ve analizin bu veriyle tekrarlanması (v2). **TeknoTahmin** web sitesinin (Streamlit, HTML/CSS) tasarlanıp kodlanması, Docker ile paketlenip Render üzerinde yayınlanması. GitHub reposunun, README'nin ve kanban tablosunun düzenlenmesi. |
-| **Gürkan Tural** | **Veri Analisti:** Ham veri setinin temizlenmesi, keşifçi veri analizi (EDA), donanım değişkenleri arasındaki istatistiksel korelasyonların incelenmesi ve bulguların anlaşılır grafiklerle görselleştirilmesi. Keşifçi veri analizi notebook'unun (`veri_inceleme_eda_hazir.ipynb`) hazırlanması: satır/sütun sayıları, veri tipleri ve özet istatistikler, fiyat segmentlerinin dağılımı, RAM, batarya ve ekran çözünürlüğünün fiyata etkisi ve korelasyon ısı haritası. Projede kullanılan veri setinden örnek kayıtların (`Proje İçin Kullanılan Veri Seti Örneği`) derlenmesi ve veri seti kaynağının belgelenmesi. EDA bulgularının modelleme aşamasına (en belirleyici özelliklerin RAM, batarya ve çözünürlük olması) yön vermesi. |
+| **Gürkan Tural** | **Veri Analisti:** Ham veri setinin temizlenmesi, keşifçi veri analizi (EDA), donanım değişkenleri arasındaki istatistiksel korelasyonların incelenmesi ve bulguların anlaşılır grafiklerle görselleştirilmesi. Keşifçi veri analizi notebook'unun (`v1_kaggle_analizi/veri_inceleme_eda.ipynb`) hazırlanması: satır/sütun sayıları, veri tipleri ve özet istatistikler, fiyat segmentlerinin dağılımı, RAM, batarya ve ekran çözünürlüğünün fiyata etkisi ve korelasyon ısı haritası. Projede kullanılan veri setinden örnek kayıtların (`Proje İçin Kullanılan Veri Seti Örneği`) derlenmesi ve veri seti kaynağının belgelenmesi. EDA bulgularının modelleme aşamasına (en belirleyici özelliklerin RAM, batarya ve çözünürlük olması) yön vermesi. |
 | **Efe Erdem** | **Araştırmacı Veri Analizi:** Sınıflandırma problemine yönelik literatürdeki benzer çalışmaların ve rakip yaklaşımların araştırılması, elde edilen deneysel sonuçların raporlanması ve proje dokümantasyonunun oluşturulması. Literatür araştırması raporunun (`Literatur_Arastirmasi.md`) hazırlanması: Kaggle'daki benzer mobil fiyat sınıflandırması çalışmalarının ve akademik makalelerin incelenmesi, kullanılan algoritmaların (SVM, KNN, Logistic Regression, ANN/DNN, ağaç tabanlı modeller) ve başarı oranlarının karşılaştırmalı tabloyla özetlenmesi. Veri ön işleme adımlarını açıklayan dokümanın (`Veri_On_Isleme.md`) ve veri kalitesi sorunlarını inceleyen hata ayıklama raporunun (`Veri_seti_hata_ayıklama_raporu.md`) yazılması. Proje dokümantasyonunun düzenli tutulması ve sonuçların raporlanmasına katkı. |
 
 ---
@@ -208,57 +208,52 @@ Sistemi dışarıdan kullanan **aktörleri** ve bu aktörlerin sistem üzerinde 
 
 ## 📂 Klasör Yapısı
 
-### 📚 Araştırma ve Dokümantasyon
-| Dosya | Açıklama |
-| :--- | :--- |
-| `README.md` | Proje tanıtımı ve sonuçlar |
-| `Literatur_Arastirmasi.md` | Benzer çalışmalar ve literatür taraması |
-| `Proje İçin Kullanılan Veri Seti Örneği` | Veri setinden örnek kayıtlar |
+```
+Mobile-Price-Range/
+├── README.md                      → Proje tanıtımı ve sonuçlar
+├── v1_kaggle_analizi/             → İlk analiz (Kaggle sentetik veri seti) ve ona ait araştırma belgeleri
+├── v2_gercek_telefon_analizi/     → Gerçek telefon verisiyle analiz
+└── web_arayuzu/                   → TeknoTahmin web sitesi (Render'da çalışan kod)
+```
 
-### 🧹 Veri Analizi ve Ön İşleme
+### 📚 `v1_kaggle_analizi/belgeler/` – Araştırma ve Dokümantasyon (v1 veri setine ait)
 | Dosya | Açıklama |
 | :--- | :--- |
-| `veri_inceleme_eda_hazir.ipynb` | Keşifçi veri analizi (EDA) notebook'u |
+| `Literatur_Arastirmasi.md` | Benzer çalışmalar ve literatür taraması |
 | `Veri_On_Isleme.md` | Ön işleme adımlarının açıklaması |
 | `Veri_seti_hata_ayıklama_raporu.md` | Veri kalitesi / hata ayıklama raporu |
+| `Proje İçin Kullanılan Veri Seti Örneği` | Veri seti kaynağı ve örnek kayıtlar |
 
-### 🤖 Modelleme
-| Dosya | Açıklama |
-| :--- | :--- |
-| `proje.ipynb` | KNN, Random Forest, XGBoost ve LightGBM kodu |
-| `mobil_fiyat_projesi.py` | Aynı kodun tek dosyalık Python sürümü (`python mobil_fiyat_projesi.py`) |
-| `en_iyi_model_rf.pkl` | Kaydedilen Random Forest modeli |
-| `scaler.pkl` | Kaydedilen StandardScaler |
-
-### 📈 Sonuçlar
-| Dosya | Açıklama |
-| :--- | :--- |
-| `sonuclar.csv` | Test seti model karşılaştırma tablosu |
-| `cv_sonuclari.csv` | 5-fold cross-validation sonuçları |
-| `grafikler/` | Tüm grafikler: sınıf dağılımı, korelasyon, boxplot, confusion matrix, feature importance, KNN k grafiği, öğrenme eğrisi |
-
-### 📦 Veri
+### 🧪 `v1_kaggle_analizi/` – İlk Analiz (sentetik veri seti)
 | Dosya | Açıklama |
 | :--- | :--- |
 | `train.csv` | Veri seti (2000 satır, 21 sütun), kaynak: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) |
+| `veri_inceleme_eda.ipynb` | Keşifçi veri analizi (EDA) notebook'u |
+| `proje.ipynb` | KNN, Random Forest, XGBoost ve LightGBM kodu |
+| `mobil_fiyat_projesi.py` | Aynı kodun tek dosyalık Python sürümü |
+| `sonuclar.csv` | Test seti model karşılaştırma tablosu |
+| `cv_sonuclari.csv` | 5-fold cross-validation sonuçları |
+| `en_iyi_model_rf.pkl`, `scaler.pkl` | Kaydedilen Random Forest modeli ve StandardScaler |
+| `grafikler/` | Sınıf dağılımı, korelasyon, boxplot, confusion matrix, feature importance, KNN k grafiği, öğrenme eğrisi |
 
-### 🌐 Web Arayüzü (`web_arayuzu/`)
-| Dosya | Açıklama |
-| :--- | :--- |
-| `app.py` | TeknoTahmin web sitesinin Streamlit kodu |
-| `requirements.txt` | Sitenin ihtiyaç duyduğu kütüphaneler |
-| `Dockerfile` | Sitenin Render'da Docker ile çalıştırılması için kurulum dosyası |
-| `.streamlit/config.toml` | Koyu tema ayarları |
-| `logolar.py` | Marka logoları (Simple Icons, tek renk SVG) |
-| `gercek_telefonlar.csv` | Sitedeki modelin eğitildiği gerçek telefon verisi |
-
-### 📱 Gerçek Telefon Verisiyle Analiz (v2)
+### 📱 `v2_gercek_telefon_analizi/` – Gerçek Telefon Verisiyle Analiz
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek akıllı telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: Kaggle – Real World Smartphone's Dataset |
-| `gercek_telefon_projesi.py` / `PROJE_gercek.ipynb` | Aynı analiz adımlarının gerçek veriyle yapılmış hâli (20 bölüm) |
+| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (20 bölüm) |
+| `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python sürümü |
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
 | `grafikler_gercek/` | Gerçek veriyle üretilen grafikler |
+
+### 🌐 `web_arayuzu/` – TeknoTahmin Web Sitesi
+| Dosya | Açıklama |
+| :--- | :--- |
+| `app.py` | Sitenin Streamlit kodu |
+| `logolar.py` | Marka logoları (Simple Icons, tek renk SVG) |
+| `gercek_telefonlar.csv` | Sitedeki modelin eğitildiği gerçek telefon verisi |
+| `requirements.txt` | Sitenin ihtiyaç duyduğu kütüphaneler |
+| `Dockerfile` | Sitenin Render'da Docker ile çalıştırılması için kurulum dosyası |
+| `.streamlit/config.toml` | Koyu tema ayarları |
 
 ---
 
@@ -272,11 +267,15 @@ cd Mobile-Price-Range
 # 2. Gerekli kütüphaneleri kurun
 python -m pip install pandas numpy scikit-learn matplotlib seaborn xgboost lightgbm joblib notebook
 
-# 3a. Eski (sentetik) veri setiyle analiz (train.csv aynı klasörde olmalı)
+# 3a. İlk analiz (sentetik veri seti)
+cd v1_kaggle_analizi
 jupyter notebook proje.ipynb          # ya da: python mobil_fiyat_projesi.py
+cd ..
 
-# 3b. Gerçek telefon verisiyle analiz (v2, gercek_telefonlar.csv aynı klasörde olmalı)
+# 3b. Gerçek telefon verisiyle analiz
+cd v2_gercek_telefon_analizi
 jupyter notebook PROJE_gercek.ipynb   # ya da: python gercek_telefon_projesi.py
+cd ..
 
 # 4. Web sitesini bilgisayarda açmak için
 cd web_arayuzu
@@ -423,7 +422,7 @@ streamlit run app.py
 
 ## 🔄 Veri Setini Neden Değiştirdik?
 
-Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başladık (eski veri seti: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)). Bu veri setiyle yapılan analiz (v1) projede olduğu gibi duruyor: `proje.ipynb`, `mobil_fiyat_projesi.py`, `train.csv`, `sonuclar.csv`, `grafikler/`.
+Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başladık (eski veri seti: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)). Bu veri setiyle yapılan analiz (v1) projede olduğu gibi duruyor: `v1_kaggle_analizi/` klasörü.
 
 Çalışma ilerledikçe bu veri setinin bazı sınırlarını fark ettik ve analizi gerçek telefon verisiyle tekrarladık (v2):
 
