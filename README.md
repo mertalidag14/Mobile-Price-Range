@@ -84,7 +84,7 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 
 | Üye | Rolü ve Sorumlulukları |
 | :--- | :--- |
-| **Mert Ali Dağ** | **Kodlama & Model Mimarisi:** Veri ön işleme boru hatlarının (pipeline) kurulması, KNN ve Random Forest algoritmalarının kodlanması, hiperparametre ayarlamaları ve model performans metriklerinin teknik analizi. |
+| **Mert Ali Dağ** | **Kodlama, Model Mimarisi & Web Geliştirme:** Veri ön işleme boru hatlarının (pipeline) kurulması, KNN ve Random Forest algoritmalarının kodlanması, hiperparametre ayarlamaları ve model performans metriklerinin teknik analizi. XGBoost/LightGBM karşılaştırması, cross-validation ve hata analizinin eklenmesi. Projenin 980 gerçek telefonluk veri setine taşınması ve analizin bu veriyle tekrarlanması (v2). **TeknoTahmin** web sitesinin (Streamlit, HTML/CSS) tasarlanıp kodlanması, Docker ile paketlenip Render üzerinde yayınlanması. GitHub reposunun, README'nin ve kanban tablosunun düzenlenmesi. |
 | **Gürkan Tural** | **Veri Analisti:** Ham veri setinin temizlenmesi, keşifçi veri analizi (EDA), donanım değişkenleri arasındaki istatistiksel korelasyonların incelenmesi ve bulguların anlaşılır grafiklerle görselleştirilmesi. |
 | **Efe Erdem** | **Araştırmacı Veri Analizi:** Sınıflandırma problemine yönelik literatürdeki benzer çalışmaların ve rakip yaklaşımların araştırılması, elde edilen deneysel sonuçların raporlanması ve proje dokümantasyonunun oluşturulması. |
 
