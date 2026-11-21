@@ -243,21 +243,21 @@ Sistemi dışarıdan kullanan **aktörleri** ve bu aktörlerin sistem üzerinde 
 
 ```mermaid
 flowchart LR
-    kullanici(["👤 Son Kullanıcı"])
-    analist(["👤 Veri Analisti / Araştırmacı"])
-    gelistirici(["👤 Geliştirici"])
+    kullanici["👤 Son Kullanıcı"]
+    analist["👤 Veri Analisti / Araştırmacı"]
+    gelistirici["👤 Geliştirici"]
 
     subgraph sistem["TeknoTahmin Sistemi"]
         direction TB
-        uc1(("Fiyat segmenti tahmini al"))
-        uc2(("Katalogda telefon ara ve filtrele"))
-        uc3(("İki telefonu karşılaştır"))
-        uc4(("Proje sonuçlarını incele"))
-        uc5(("Veri setini yükle ve temizle"))
-        uc6(("Modelleri eğit ve karşılaştır"))
-        uc7(("Grafik ve rapor üret"))
-        uc8(("Modeli kaydet"))
-        uc9(("Siteyi Docker ile Render'da yayınla"))
+        uc1(["Fiyat segmenti tahmini al"])
+        uc2(["Katalogda telefon ara ve filtrele"])
+        uc3(["İki telefonu karşılaştır"])
+        uc4(["Proje sonuçlarını incele"])
+        uc5(["Veri setini yükle ve temizle"])
+        uc6(["Modelleri eğit ve karşılaştır"])
+        uc7(["Grafik ve rapor üret"])
+        uc8(["Modeli kaydet"])
+        uc9(["Siteyi Docker ile Render'da yayınla"])
     end
 
     kullanici --- uc1
