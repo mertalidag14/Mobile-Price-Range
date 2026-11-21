@@ -175,6 +175,10 @@ background: linear-gradient(135deg, rgba(167,139,250,.18), rgba(96,165,250,.10))
 .block-container {{ margin: 1rem auto; padding: 1.4rem 1rem !important; border-radius: 20px; }}
 .baslik {{ font-size: 1.6rem; }}
 .cubuk {{ grid-template-columns: 105px 1fr 42px; }}
+.markalar {{ flex-wrap: nowrap; overflow-x: auto; padding-bottom: .4rem; margin-bottom: .8rem; }}
+.markalar .marka {{ flex: none; }}
+.cipler {{ flex-wrap: nowrap; overflow-x: auto; }}
+.cip {{ flex: none; }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -197,6 +201,8 @@ def veri_yukle():
     # Model adının başında marka tekrarlanıyorsa olduğu gibi bırak, yoksa ekle
     df["isim"] = [mo if mo.lower().startswith(b) else f"{ma} {mo}"
                   for mo, b, ma in zip(df["model"], df["brand_name"], df["marka"])]
+    # "Samsung Galaxy A14 5G (6GB RAM + 128GB)" -> "Samsung Galaxy A14 5G": aynı modelin varyantlarını gruplamak için
+    df["temel_model"] = df["isim"].str.replace(r"\s*\(.*\)\s*$", "", regex=True).str.strip()
     return df, list(sinirlar)
 
 
@@ -219,6 +225,10 @@ df["tahmin"] = model.predict(df[OZELLIKLER])
 
 def segment_araligi(s):
     return f"{tl(SINIRLAR[s])} – {tl(SINIRLAR[s + 1])}"
+
+
+def sarj_yazisi(watt):
+    return f"{watt:.0f} W şarj" if watt else "standart şarj"
 
 
 # ------------------------------------------------------------
@@ -253,35 +263,66 @@ sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_hakkinda = st.tabs(
 # ------------------------------------------------------------
 with sekme_tahmin:
     st.markdown('<div class="baslik">Telefonun hangi fiyat segmentinde?</div>'
-                '<div class="alt">Özellikleri seç, gerçek telefonlarla eğitilmiş model fiyat segmentini söylesin.</div>',
+                '<div class="alt">Telefonunun modelini seç, sabit özellikleri otomatik gelsin. Sadece RAM ve '
+                'depolamayı seçmen yeterli. İstersen özellikleri kendin de yazabilirsin.</div>',
                 unsafe_allow_html=True)
 
-    def secenekler(sutun):
-        return sorted(df[sutun].dropna().unique().tolist())
-
-    def ortanca(sutun):
-        degerler = secenekler(sutun)
-        med = df[sutun].median()
-        return min(degerler, key=lambda v: abs(v - med))
+    def gb(x):
+        return f"{x / 1024:g} TB" if x >= 1024 else f"{x:g} GB"
 
     sol, sag = st.columns([1.1, 1], gap="large")
+    gercek_fiyat = None
     with sol:
-        st.markdown('<div class="bolum">⚙️ Donanım</div>', unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        ram = c1.select_slider("RAM (GB)", secenekler("ram_capacity"), ortanca("ram_capacity"))
-        hafiza = c2.select_slider("Depolama (GB)", secenekler("internal_memory"), ortanca("internal_memory"))
-        islemci = st.slider("İşlemci hızı (GHz)", 1.2, 3.2, 2.3, 0.05)
-        batarya = st.slider("Batarya (mAh)", 2000, 7000, 5000, 100)
-        c3, c4 = st.columns(2)
-        sarj = c3.slider("Hızlı şarj (W, 0 = yok)", 0, 150, 33, 1)
-        g5 = c4.radio("5G", ["Var", "Yok"], horizontal=True) == "Var"
-        st.markdown('<div class="bolum">🖥️ Ekran ve kamera</div>', unsafe_allow_html=True)
-        c5, c6 = st.columns(2)
-        ekran = c5.slider("Ekran boyutu (inç)", 4.0, 7.5, 6.6, 0.1)
-        yenileme = c6.select_slider("Yenileme hızı (Hz)", [60, 90, 120, 144, 165], 120)
-        c7, c8 = st.columns(2)
-        cozunurluk = c7.select_slider("Ekran yüksekliği (piksel)", [960, 1280, 1600, 2340, 2400, 2460, 2800, 3200], 2400)
-        kamera = c8.select_slider("Ana kamera (MP)", [8, 12, 13, 48, 50, 64, 108, 200], 50)
+        mod = st.radio("Nasıl girmek istersin?", ["📱 Telefon modelini seç", "✍️ Özellikleri kendim yazayım"],
+                       horizontal=True, label_visibility="collapsed")
+        if mod.startswith("📱"):
+            modeller = sorted(df["temel_model"].unique(), key=str.lower)
+            varsayilan_model = next((m for m in modeller if m.lower() == "apple iphone 13"), modeller[0])
+            secili = st.selectbox("Telefon modeli (yazarak arayabilirsin)", modeller,
+                                  index=modeller.index(varsayilan_model), placeholder="ör. iPhone 13")
+            varyantlar = df[df["temel_model"] == secili]
+            sabit = varyantlar.iloc[0]
+            ram_secenek = sorted(set(varyantlar["ram_capacity"]) | {4, 6, 8, 12, 16})
+            depo_secenek = sorted(set(varyantlar["internal_memory"]) | {64, 128, 256, 512, 1024})
+            c1, c2 = st.columns(2)
+            ram = c1.selectbox("RAM", ram_secenek, index=ram_secenek.index(sabit.ram_capacity), format_func=gb)
+            hafiza = c2.selectbox("Depolama", depo_secenek, index=depo_secenek.index(sabit.internal_memory),
+                                  format_func=gb)
+            batarya, islemci, sarj = sabit.battery_capacity, sabit.processor_speed, sabit.fast_charging
+            g5, ekran, yenileme = bool(sabit["5G_or_not"]), sabit.screen_size, sabit.refresh_rate
+            cozunurluk, kamera = sabit.resolution_height, sabit.primary_camera_rear
+            st.markdown(
+                '<div class="bolum">📋 Bu modelin sabit özellikleri</div>'
+                '<div class="ozellikler" style="margin-top:.3rem">'
+                + "".join(f'<span class="ozellik" style="font-size:.85rem;padding:.25rem .6rem">{y}</span>' for y in [
+                    f"🔋 {batarya:.0f} mAh", f"⚙️ {islemci:g} GHz", f"⚡ {sarj_yazisi(sarj)}",
+                    f"🖥️ {ekran:g}\"", f"🔄 {yenileme} Hz", f"📐 {sabit.resolution_width}×{cozunurluk}",
+                    f"📷 {kamera:g} MP", "📶 5G var" if g5 else "📶 5G yok"])
+                + '</div>', unsafe_allow_html=True)
+            eslesen = varyantlar[(varyantlar["ram_capacity"] == ram) & (varyantlar["internal_memory"] == hafiza)]
+            if not eslesen.empty:
+                gercek_fiyat = eslesen.iloc[0].price
+            varyant_yazi = ", ".join(f"{gb(r)} + {gb(d)}" for r, d in
+                                     zip(varyantlar["ram_capacity"], varyantlar["internal_memory"]))
+            st.caption(f"Veri setindeki varyantlar: {varyant_yazi}")
+        else:
+            st.markdown('<div class="bolum">⚙️ Donanım</div>', unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            ram = c1.number_input("RAM (GB)", 1, 24, 8, 1)
+            hafiza = c2.number_input("Depolama (GB)", 8, 2048, 128, 64)
+            c3, c4 = st.columns(2)
+            islemci = c3.number_input("İşlemci hızı (GHz)", 1.0, 4.0, 2.4, 0.1, format="%.1f")
+            batarya = c4.number_input("Batarya (mAh)", 1000, 10000, 5000, 100)
+            c5, c6 = st.columns(2)
+            sarj = c5.number_input("Hızlı şarj (W, yoksa 0)", 0, 250, 33, 1)
+            g5 = c6.selectbox("5G", ["Var", "Yok"]) == "Var"
+            st.markdown('<div class="bolum">🖥️ Ekran ve kamera</div>', unsafe_allow_html=True)
+            c7, c8 = st.columns(2)
+            ekran = c7.number_input("Ekran boyutu (inç)", 4.0, 8.0, 6.6, 0.1, format="%.1f")
+            yenileme = c8.number_input("Yenileme hızı (Hz)", 60, 240, 120, 30)
+            c9, c10 = st.columns(2)
+            cozunurluk = c9.number_input("Ekran yüksekliği (piksel)", 800, 4000, 2400, 10)
+            kamera = c10.number_input("Ana kamera (MP)", 2, 200, 50, 1)
 
     girdi = pd.DataFrame([[ram, hafiza, batarya, islemci, yenileme, kamera, cozunurluk, ekran, int(g5), sarj]],
                          columns=OZELLIKLER)
@@ -302,7 +343,10 @@ with sekme_tahmin:
             f'<div class="guven">Model güveni: %{olas[sinif] * 100:.0f}</div>'
             f'<div class="fiyat">{segment_araligi(sinif)}</div>'
             f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>'
-            f'<div style="margin-top:1rem">{cubuklar}</div></div>',
+            + (f'<div class="aralik" style="margin-top:.5rem">🏷️ Seçtiğin varyantın gerçek fiyatı: '
+               f'<b>{tl(gercek_fiyat)}</b> (gerçek segmenti: {SEGMENTLER[int(pd.cut([gercek_fiyat], SINIRLAR, labels=False, include_lowest=True)[0])][0]})</div>'
+               if gercek_fiyat is not None else "")
+            + f'<div style="margin-top:1rem">{cubuklar}</div></div>',
             unsafe_allow_html=True)
 
         # Seçilen özelliklere en yakın gerçek telefonlar
@@ -323,10 +367,6 @@ with sekme_tahmin:
 SAYFA_BOYUTU = 24
 
 
-def sarj_yazisi(watt):
-    return f"{watt:.0f} W şarj" if watt else "standart şarj"
-
-
 def kart_html(r):
     ad, ikon, renk = SEGMENTLER[r.segment]
     dogru = r.tahmin == r.segment
@@ -345,7 +385,9 @@ def kart_html(r):
         f'<ul><li>🧠 {r.ram_capacity:g} GB RAM · 💾 {r.internal_memory:g} GB</li>'
         f'<li>🔋 {r.battery_capacity:.0f} mAh · ⚡ {sarj_yazisi(r.fast_charging)}</li>'
         f'<li>🖥️ {r.screen_size:g}" · {r.resolution_width}×{r.resolution_height} · {r.refresh_rate} Hz</li>'
-        f'<li>📷 {r.primary_camera_rear:g} MP · ⚙️ {r.processor_speed:g} GHz</li></ul>'
+        f'<li>📷 {r.primary_camera_rear:g} MP · ⚙️ {r.processor_speed:g} GHz</li>'
+        + (f'<li>⭐ {r.avg_rating:g}/10 kullanıcı puanı</li>' if pd.notna(r.avg_rating) else '')
+        + '</ul>'
         f'<div class="ozellikler">{ozellikler}{tahmin_rozeti}</div></div>'
     )
 
@@ -355,49 +397,79 @@ with sekme_katalog:
                 f'<div class="alt">{len(df)} gerçek telefon, gerçek özellikleri ve satış fiyatlarıyla '
                 '(Smartprix, Hindistan). Her kartta modelin tahmini ve doğru bilip bilmediği de yazıyor.</div>',
                 unsafe_allow_html=True)
-    f1, f2, f3, f4 = st.columns([1.5, 1.3, 1, 1])
-    tum_markalar = df["marka"].value_counts().index.tolist()
-    marka_sec = f1.multiselect("Marka", tum_markalar, placeholder="Tüm markalar")
-    segment_sec = f2.multiselect("Segment", list(SEGMENTLER), placeholder="Tüm segmentler",
-                                 format_func=lambda s: f"{SEGMENTLER[s][1]} {SEGMENTLER[s][0]}")
-    siralama = f3.selectbox("Sırala", ["Fiyat (artan)", "Fiyat (azalan)", "RAM (yüksek)", "Batarya (yüksek)",
-                                        "Kamera (yüksek)"])
-    arama = f4.text_input("Model ara", placeholder="ör. iPhone 14")
-    c1, c2, c3 = st.columns([2, 1, 1])
-    en_yuksek_tl = int(df["price"].max() * KUR) + 1000
-    tl_aralik = c1.slider("Fiyat aralığı (TL)", 0, en_yuksek_tl, (0, en_yuksek_tl), 500)
-    fiyat_aralik = (tl_aralik[0] / KUR, tl_aralik[1] / KUR)
-    sadece_5g = c2.checkbox("Sadece 5G")
-    yanlislar = c3.checkbox("Modelin yanıldıkları")
+    filtre_kol, liste_kol = st.columns([1, 3.1], gap="large")
 
-    liste = df[df["price"].between(*fiyat_aralik)]
+    # ---- Sol: tek "Filtrele" paneli (Trendyol tarzı) ----
+    with filtre_kol:
+        with st.container(border=True):
+            st.markdown('<div class="bolum">🔎 Filtrele</div>', unsafe_allow_html=True)
+            arama = st.text_input("Model ara", placeholder="ör. iPhone 14")
+            tum_markalar = df["marka"].value_counts().index.tolist()
+            marka_sec = st.multiselect("Marka", tum_markalar, placeholder="Tüm markalar")
+            segment_sec = st.multiselect("Fiyat segmenti", list(SEGMENTLER), placeholder="Tüm segmentler",
+                                         format_func=lambda s: f"{SEGMENTLER[s][1]} {SEGMENTLER[s][0]}")
+            ram_sec = st.multiselect("RAM", sorted(df["ram_capacity"].unique()), placeholder="Tümü",
+                                     format_func=lambda x: f"{x:g} GB")
+            depo_sec = st.multiselect("Depolama", sorted(df["internal_memory"].unique()), placeholder="Tümü",
+                                      format_func=lambda x: f"{x / 1024:g} TB" if x >= 1024 else f"{x:g} GB")
+            st.markdown('<div style="font-size:.9rem;margin-top:.2rem">Fiyat aralığı (TL)</div>',
+                        unsafe_allow_html=True)
+            en_yuksek_tl = int(df["price"].max() * KUR) + 1000
+            p1, p2 = st.columns(2)
+            tl_min = p1.number_input("En az", 0, en_yuksek_tl, 0, 1000, label_visibility="collapsed")
+            tl_max = p2.number_input("En çok", 0, en_yuksek_tl, en_yuksek_tl, 1000, label_visibility="collapsed")
+            sadece_5g = st.checkbox("5G destekli")
+            hizli_sarj = st.checkbox("Hızlı şarj")
+            hafiza_karti = st.checkbox("Hafıza kartı desteği")
+            yanlislar = st.checkbox("Modelin yanıldıkları")
+
+    liste = df[df["price"].between(tl_min / KUR, tl_max / KUR)]
     if marka_sec:
         liste = liste[liste["marka"].isin(marka_sec)]
     if segment_sec:
         liste = liste[liste["segment"].isin(segment_sec)]
+    if ram_sec:
+        liste = liste[liste["ram_capacity"].isin(ram_sec)]
+    if depo_sec:
+        liste = liste[liste["internal_memory"].isin(depo_sec)]
     if sadece_5g:
         liste = liste[liste["5G_or_not"] == 1]
+    if hizli_sarj:
+        liste = liste[liste["fast_charging_available"] == 1]
+    if hafiza_karti:
+        liste = liste[liste["extended_memory_available"] == 1]
     if yanlislar:
         liste = liste[liste["tahmin"] != liste["segment"]]
     if arama.strip():
         kelimeler = arama.lower().split()
         liste = liste[liste["isim"].str.lower().apply(lambda ad: all(k in ad for k in kelimeler))]
-    sutun, artan = {"Fiyat (artan)": ("price", True), "Fiyat (azalan)": ("price", False),
-                    "RAM (yüksek)": ("ram_capacity", False), "Batarya (yüksek)": ("battery_capacity", False),
-                    "Kamera (yüksek)": ("primary_camera_rear", False)}[siralama]
-    liste = liste.sort_values(sutun, ascending=artan)
 
-    toplam_sayfa = max(1, -(-len(liste) // SAYFA_BOYUTU))
-    b1, b2 = st.columns([3, 1])
-    b1.markdown(f'<div class="alt" style="margin:1.9rem 0 0">{len(liste)} telefon bulundu</div>',
-                unsafe_allow_html=True)
-    sayfa = b2.number_input(f"Sayfa (toplam {toplam_sayfa})", 1, toplam_sayfa, 1)
-    gosterilen = liste.iloc[(sayfa - 1) * SAYFA_BOYUTU: sayfa * SAYFA_BOYUTU]
-    if gosterilen.empty:
-        st.info("Bu filtrelere uyan telefon yok. Filtreleri gevşetmeyi dene.")
-    else:
-        st.markdown(f'<div class="izgara">{"".join(kart_html(r) for r in gosterilen.itertuples())}</div>',
+    # ---- Sağ: sıralama ve kartlar ----
+    with liste_kol:
+        SIRALAMA = {
+            "Önerilen": (["avg_rating", "price"], [False, True]),
+            "En düşük fiyat": (["price"], [True]),
+            "En yüksek fiyat": (["price"], [False]),
+            "En çok beğenilen (puan)": (["avg_rating"], [False]),
+            "En yüksek RAM": (["ram_capacity", "price"], [False, True]),
+            "En yüksek depolama": (["internal_memory", "price"], [False, True]),
+            "En uzun batarya": (["battery_capacity"], [False]),
+            "En iyi kamera": (["primary_camera_rear"], [False]),
+        }
+        b1, b2, b3 = st.columns([1.6, 1.4, 1])
+        b1.markdown(f'<div class="alt" style="margin:1.9rem 0 0"><b>{len(liste)}</b> telefon bulundu</div>',
                     unsafe_allow_html=True)
+        siralama = b2.selectbox("Sırala", list(SIRALAMA))
+        sutunlar, artanlar = SIRALAMA[siralama]
+        liste = liste.sort_values(sutunlar, ascending=artanlar, na_position="last")
+        toplam_sayfa = max(1, -(-len(liste) // SAYFA_BOYUTU))
+        sayfa = b3.number_input(f"Sayfa (/{toplam_sayfa})", 1, toplam_sayfa, 1)
+        gosterilen = liste.iloc[(sayfa - 1) * SAYFA_BOYUTU: sayfa * SAYFA_BOYUTU]
+        if gosterilen.empty:
+            st.info("Bu filtrelere uyan telefon yok. Filtreleri gevşetmeyi dene.")
+        else:
+            st.markdown(f'<div class="izgara">{"".join(kart_html(r) for r in gosterilen.itertuples())}</div>',
+                        unsafe_allow_html=True)
 
 # ------------------------------------------------------------
 # 3) Karşılaştırma
@@ -445,17 +517,61 @@ with sekme_karsilastir:
 with sekme_hakkinda:
     st.markdown('<div class="baslik">Proje Hakkında</div>', unsafe_allow_html=True)
     sinir_metni = "; ".join(f"{SEGMENTLER[i][0]}: {segment_araligi(i)}" for i in range(4))
-    st.markdown(f"""
-- **Veri seti:** {len(df)} gerçek akıllı telefon ve gerçek satış fiyatları (Smartprix, Hindistan, ₹).
-  Sitede fiyatlar **1 ₹ ≈ {KUR} TL** kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevrildi. Bunlar Hindistan
-  fiyatlarıdır, Türkiye'deki satış fiyatları vergiler yüzünden genelde daha yüksektir.
-  Kaynak: Kaggle "Real World Smartphone's Dataset". En pahalı %1'lik lüks telefonlar (ör. Vertu) çıkarıldı.
-- **Fiyat segmentleri:** Telefonlar fiyatlarına göre 4 eşit gruba bölündü. {sinir_metni}
-- **Analiz sonuçları (test seti):** KNN %70.1, Random Forest %74.7, XGBoost %76.8, LightGBM %75.3
-- **Bu sitedeki model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu %{DOGRULUK * 100:.1f}
-- **En belirleyici özellikler:** işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü
+    h1, h2 = st.columns(2, gap="large")
+    with h1:
+        st.markdown(f"""
+#### 🎯 Amaç
+Bir telefonun donanım özelliklerine (RAM, depolama, işlemci, batarya, ekran, kamera, 5G, hızlı şarj) bakarak
+hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
+
+#### 📁 Veri seti
+- **{len(df)} gerçek akıllı telefon**, {df['marka'].nunique()} marka, gerçek satış fiyatlarıyla
+  (Kaggle "Real World Smartphone's Dataset", Smartprix, Hindistan).
+- Fiyatlar sitede **1 ₹ ≈ {KUR} TL** kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevrildi. Bunlar Hindistan
+  fiyatlarıdır, Türkiye'de vergiler yüzünden genelde daha yüksektir.
+- Projeye önce Kaggle'ın sentetik *Mobile Price Classification* veri setiyle başlandı (v1), gerçekçi sonuç
+  için gerçek telefon verisine geçildi (v2).
+
+#### 🧹 Veri ön işleme
+- Eksik değerler medyanla dolduruldu, hızlı şarj bilgisi olmayanlar 0 W kabul edildi.
+- Fiyatı uç değerde olan en pahalı %1'lik lüks telefonlar (ör. Vertu) çıkarıldı.
+- Telefonlar fiyatlarına göre **4 eşit gruba (çeyreklere)** bölündü: {sinir_metni}
+- Veri %80 eğitim / %20 test olarak, segment oranları korunarak (stratified) ayrıldı.
+
+#### 🔬 Yöntem
+- **KNN** için StandardScaler / MinMaxScaler ölçeklendirmesi karşılaştırıldı.
+- Tüm modellerde en iyi parametreler **GridSearchCV** ile aranıp **5-fold cross-validation** ile doğrulandı.
+- Değerlendirme: Accuracy, Precision, Recall, F1-Score, Confusion Matrix, öğrenme eğrisi, özellik önemi,
+  hata analizi.
+""")
+    with h2:
+        st.markdown(f"""
+#### 🤖 Karşılaştırılan modeller (test seti)
+
+| Model | Accuracy | F1-Score | 5-Fold CV |
+| :--- | :---: | :---: | :---: |
+| KNN (k=3, StandardScaler) | %70.1 | 0.696 | %61.9 |
+| Random Forest | %74.7 | 0.743 | **%70.6** |
+| **XGBoost** | **%76.8** | **0.764** | %67.9 |
+| LightGBM | %75.3 | 0.746 | %68.0 |
+
+- **Bu sitedeki model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu
+  **%{DOGRULUK * 100:.1f}**. Cross-validation'da en kararlı model olduğu için seçildi.
+- **En belirleyici özellikler:** işlemci hızı, depolama, RAM, hızlı şarj gücü, ekran çözünürlüğü.
 - Model fiyatın sadece donanımdan tahmin edilebilen kısmını öğrenir. Marka değeri (ör. Apple) modele dahil
-  değildir, bu yüzden bazı telefonlarda yanılır. Katalogda "Modelin yanıldıkları" filtresiyle bunları görebilirsin.
+  değildir, bu yüzden bazı telefonlarda yanılır. Katalogda **"Modelin yanıldıkları"** filtresiyle görebilirsin.
+
+#### 🛠️ Kullanılan yazılımlar ve teknolojiler
+- **Python** · **Pandas, NumPy** (veri işleme) · **Matplotlib, Seaborn** (grafikler)
+- **Scikit-learn** (KNN, Random Forest, GridSearchCV) · **XGBoost, LightGBM**
+- **Jupyter Notebook, VS Code** (geliştirme ortamı)
+- **Streamlit, HTML/CSS, SVG** (bu web sitesi) · **Docker** + **Render** (yayınlama)
+- **Git & GitHub** (sürüm kontrolü, kanban tablosu)
+
+#### 👥 Ekip
+Mert Ali Dağ · Gürkan Tural · Efe Erdem
+
+[📂 Projenin GitHub sayfası](https://github.com/mertalidag14/Mobile-Price-Range)
 """)
 
 st.markdown('<div class="not">Telefon bilgileri ve fiyatları: Smartprix (Hindistan) verisinden alınan Kaggle veri seti. '
