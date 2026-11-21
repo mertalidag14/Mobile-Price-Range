@@ -216,14 +216,6 @@ Gradient Boosting modelleri (XGBoost, LightGBM) Random Forest'ı yaklaşık 3–
 | H3: Ölçeklendirme KNN'i olumlu etkiler | ❌ Ret | Ölçeklendirmesiz %93,5, StandardScaler %50, MinMaxScaler %42,5 (k=5) |
 | H4: RAM, batarya, çözünürlük önemli | ✅ Kabul | Feature Importance ilk 4 sırası |
 
-### Grafikler
-![Sınıf Dağılımı](https://drive.google.com/file/d/1clry61bPuH7n1WfFgJVJNwtPaLngIY3k/view)
-![Korelasyon Matrisi](https://drive.google.com/file/d/118hCKsLfNEXOTN-2LYjOVU6H6rRnAa5e/view)
-![Önemli Özellikler](https://drive.google.com/file/d/1Lo5Yp4uIoK9J4Y6PdN1sClC0EDlU3CE5/view)
-![Confusion Matrix](https://drive.google.com/file/d/1iCGDVu1-umjFcWsttzzc2H_SFGoiiorw/view)
-![Feature Importance](https://drive.google.com/file/d/1IoJ6UoWNJkUXZ0r1NeQgNZlbqrNHpqOA/view)
-![KNN k Grafiği](https://drive.google.com/file/d/1SLYDWlN0oin4Mffyfm2QluUx1EB-a_27/view)
-![Öğrenme Eğrisi](https://drive.google.com/file/d/19-qtB8_i9pQh_IwdDf0nr6eojHsGUWaw/view)
 
 ---
 
