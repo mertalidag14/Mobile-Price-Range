@@ -127,7 +127,16 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 
 ## 📊 Sistem Mimarisi ve UML Diyagramları
 
-Projede yazılımın yapısal tasarımını standartlaştırmak, veri işleme adımlarının mantıksal akışını netleştirmek ve kullanıcı etkileşimlerini modellemek amacıyla üç temel UML diyagramından yararlanılmıştır. Diyagramlar, projeye eklenen **gerçek telefon veri seti (v2)** ve **TeknoTahmin web sitesi** ile birlikte güncellenmiştir. Projenin ilk hâline ait diyagramlar en altta bağlantı olarak duruyor.
+Projede yazılımın yapısal tasarımını standartlaştırmak, veri işleme adımlarının mantıksal akışını netleştirmek ve kullanıcı etkileşimlerini modellemek amacıyla üç temel UML diyagramından yararlanılmıştır. Diyagramlar, projeye eklenen **gerçek telefon veri seti (v2)** ve **TeknoTahmin web sitesi** ile birlikte güncellenmiştir. Projenin ilk hâline ait diyagramlar **v1**, güncel diyagramlar **v2** olarak ayrılmıştır:
+
+| Diyagram | v1 – İlk sürüm (sentetik veri, web sitesi yok) | v2 – Güncel sürüm (gerçek veri + TeknoTahmin) |
+| :--- | :---: | :---: |
+| Sınıf Diyagramı (Class) | [Görüntüle](https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view?usp=sharing) | [Görüntüle](https://drive.google.com/file/d/1nKgucbklsTJXGJYzTyyyrxNGbbuoFyd0/view?usp=sharing) |
+| Aktivite Diyagramı (Activity) | [Görüntüle](https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view?usp=sharing) | [Görüntüle](https://drive.google.com/file/d/1lSw9-dR1bsSlzJepRA4KBatqPK6S_5-w/view?usp=sharing) |
+| Kullanım Senaryosu Diyagramı (Use Case) | [Görüntüle](https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view?usp=sharing) | [Görüntüle](https://drive.google.com/file/d/1PZXyBZt-nu3XMUGz2Q0yY06bAdKfJiSY/view?usp=sharing) |
+
+Tüm diyagram görselleri Google Drive'daki **Diyagram Görselleri** klasöründe bulunur ve bağlantıya sahip herkes tarafından görüntülenebilir.
+
 
 **Diyagramları hazırlayan ekip:** Mert Ali Dağ · Gürkan Tural · Efe Erdem
 
@@ -135,84 +144,7 @@ Projede yazılımın yapısal tasarımını standartlaştırmak, veri işleme ad
 
 Sistemin **statik (değişmeyen) yapısal iskeletini** ortaya koyar. Veri yükleme, ön işleme, model eğitimi, değerlendirme ve web arayüzü sınıflarını; bu sınıfların nitelik ve operasyonlarını ve aralarındaki ilişkileri gösterir.
 
-```mermaid
----
-title: "TeknoTahmin – Sınıf Diyagramı (Class Diagram)"
----
-classDiagram
-    direction LR
-    class VeriYukleyici {
-        +dosya_yolu: str
-        +veri_seti: v1_sentetik / v2_gercek
-        +oku() DataFrame
-    }
-    class VeriOnIsleyici {
-        +ozellikler: list
-        +eksik_degerleri_doldur()
-        +luks_uc_degerleri_cikar()
-        +segmentlere_bol(4 ceyrek)
-        +egitim_test_ayir(80/20)
-        +olceklendir(StandardScaler / MinMaxScaler)
-    }
-    class KesifciAnaliz {
-        +sinif_dagilimi()
-        +korelasyon_matrisi()
-        +boxplot_ciz()
-    }
-    class ModelEgitici {
-        +knn: KNeighborsClassifier
-        +rf: RandomForestClassifier
-        +xgb: XGBClassifier
-        +lgbm: LGBMClassifier
-        +grid_search()
-        +egit()
-    }
-    class ModelDegerlendirici {
-        +metrikler() Accuracy_Precision_Recall_F1
-        +confusion_matrix()
-        +cross_validation(5_fold)
-        +ogrenme_egrisi()
-        +ozellik_onemi()
-        +hata_analizi()
-    }
-    class ModelKaydedici {
-        +kaydet(pkl)
-        +yukle(pkl)
-    }
-    class Telefon {
-        +marka: str
-        +model: str
-        +fiyat_rupi: float
-        +ram, depolama, batarya
-        +islemci_hizi, ekran, kamera
-        +g5, hizli_sarj
-        +fiyat_tl() float
-    }
-    class Katalog {
-        +telefonlar: list~Telefon~
-        +filtrele(marka, segment, fiyat, 5G)
-        +sirala()
-        +ara(kelime)
-        +sayfala()
-    }
-    class TeknoTahminSitesi {
-        +model: RandomForestClassifier
-        +katalog: Katalog
-        +fiyat_tahmini(ozellikler) segment
-        +benzer_telefonlar()
-        +karsilastir(telefon1, telefon2)
-        +proje_hakkinda()
-    }
-    VeriYukleyici --> VeriOnIsleyici : ham veri
-    VeriOnIsleyici --> KesifciAnaliz : temiz veri
-    VeriOnIsleyici --> ModelEgitici : X_train, y_train
-    ModelEgitici --> ModelDegerlendirici : eğitilmiş modeller
-    ModelEgitici --> ModelKaydedici : en iyi model
-    Katalog "1" o-- "*" Telefon
-    TeknoTahminSitesi *-- Katalog
-    TeknoTahminSitesi ..> ModelEgitici : Random Forest kullanır
-    note "👥 Hazırlayanlar: Mert Ali Dağ · Gürkan Tural · Efe Erdem"
-```
+🖼️ **Diyagramı görüntüle:** [v2 – güncel sürüm](https://drive.google.com/file/d/1nKgucbklsTJXGJYzTyyyrxNGbbuoFyd0/view?usp=sharing) · [v1 – ilk sürüm](https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view?usp=sharing)
 
 **Sınıfların görevleri:**
 
@@ -238,34 +170,7 @@ classDiagram
 
 Sistemin uçtan uca **dinamik iş akışını** adım adım görselleştirir: veri setinin seçilmesi ve temizlenmesinden model eğitimine, değerlendirmeye ve modelin web sitesi olarak yayınlanmasına kadar.
 
-```mermaid
----
-title: "TeknoTahmin – Aktivite Diyagramı (Activity Diagram)"
----
-flowchart TD
-    A([Başla]) --> B{Hangi veri seti?}
-    B -- "v1: Kaggle sentetik, 2000 satır" --> C[train.csv oku]
-    B -- "v2: 980 gerçek telefon, gerçek fiyat" --> D[gercek_telefonlar.csv oku]
-    D --> D1[Eksik değerleri doldur<br/>En pahalı %1'lik lüks telefonları çıkar]
-    D1 --> D2[Fiyata göre 4 eşit segmente böl]
-    C --> E[Keşifçi veri analizi<br/>sınıf dağılımı, korelasyon, boxplot]
-    D2 --> E
-    E --> F[Eğitim / test ayrımı %80 / %20]
-    F --> G{Algoritma ölçeklendirme ister mi?}
-    G -- "Evet: KNN" --> H[StandardScaler / MinMaxScaler karşılaştır]
-    G -- "Hayır: RF, XGBoost, LightGBM" --> I[Ham değerlerle devam et]
-    H --> J[GridSearchCV ile hiperparametre araması]
-    I --> J
-    J --> K[Modelleri eğit]
-    K --> L[Değerlendir: Accuracy, F1, Confusion Matrix,<br/>5-fold CV, öğrenme eğrisi, özellik önemi, hata analizi]
-    L --> M[En iyi modeli .pkl olarak kaydet]
-    M --> N[Modeli TeknoTahmin web sitesine entegre et]
-    N --> O[Docker ile paketle]
-    O --> P[Render üzerinde yayınla]
-    P --> Q[Kullanıcı tahmin alır, katalogda gezer, karşılaştırır]
-    Q --> R([Bitir])
-    R ~~~ ekipA["👥 Hazırlayanlar: Mert Ali Dağ · Gürkan Tural · Efe Erdem"]
-```
+🖼️ **Diyagramı görüntüle:** [v2 – güncel sürüm](https://drive.google.com/file/d/1lSw9-dR1bsSlzJepRA4KBatqPK6S_5-w/view?usp=sharing) · [v1 – ilk sürüm](https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view?usp=sharing)
 
 **Akışın adımları:**
 1. **Veri seti seçimi (karar noktası):** Analiz ya sentetik Kaggle verisiyle (v1) ya da 980 gerçek telefonla (v2) başlar. İki yol da aynı adımlara bağlanır, böylece sonuçlar karşılaştırılabilir.
@@ -283,42 +188,7 @@ flowchart TD
 
 Sistemi dışarıdan kullanan **aktörleri** ve bu aktörlerin sistem üzerinde gerçekleştirebileceği **temel işlevleri** tanımlar.
 
-```mermaid
----
-title: "TeknoTahmin – Kullanım Senaryosu Diyagramı (Use Case Diagram)"
----
-flowchart LR
-    kullanici["👤 Son Kullanıcı"]
-    analist["👤 Veri Analisti / Araştırmacı<br/>Gürkan Tural · Efe Erdem"]
-    gelistirici["👤 Geliştirici<br/>Mert Ali Dağ"]
-
-    subgraph sistem["TeknoTahmin Sistemi"]
-        direction TB
-        uc1(["Fiyat segmenti tahmini al"])
-        uc2(["Katalogda telefon ara ve filtrele"])
-        uc3(["İki telefonu karşılaştır"])
-        uc4(["Proje sonuçlarını incele"])
-        uc5(["Veri setini yükle ve temizle"])
-        uc6(["Modelleri eğit ve karşılaştır"])
-        uc7(["Grafik ve rapor üret"])
-        uc8(["Modeli kaydet"])
-        uc9(["Siteyi Docker ile Render'da yayınla"])
-    end
-
-    kullanici --- uc1
-    kullanici --- uc2
-    kullanici --- uc3
-    kullanici --- uc4
-    analist --- uc5
-    analist --- uc6
-    analist --- uc7
-    analist --- uc4
-    gelistirici --- uc8
-    gelistirici --- uc9
-    uc6 -. include .-> uc8
-    uc1 -. include .-> uc8
-    sistem ~~~ ekipU["👥 Hazırlayanlar: Mert Ali Dağ · Gürkan Tural · Efe Erdem"]
-```
+🖼️ **Diyagramı görüntüle:** [v2 – güncel sürüm](https://drive.google.com/file/d/1PZXyBZt-nu3XMUGz2Q0yY06bAdKfJiSY/view?usp=sharing) · [v1 – ilk sürüm](https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view?usp=sharing)
 
 **Aktörler ve kullanım senaryoları:**
 
@@ -333,7 +203,6 @@ flowchart LR
 - **«include» (kesikli oklar):** "Fiyat segmenti tahmini al" ve "Modelleri eğit ve karşılaştır" senaryoları her zaman **kaydedilmiş modeli** kullanır. Tahmin, eğitilmiş model olmadan yapılamaz.
 - **Sistem sınırı (gri kutu):** TeknoTahmin sisteminin sunduğu işlevler kutunun içinde, aktörler ise dışındadır.
 
-> **İlk sürüm diyagramlar (v1, Google Drive):** [Sınıf Diyagramı](https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view) · [Aktivite Diyagramı](https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view) · [Kullanım Senaryosu Diyagramı](https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view)
 
 ---
 
@@ -525,16 +394,16 @@ Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir St
 ### 📸 Ekran Görüntüleri
 
 **🔮 Fiyat Tahmini:** Özellikler seçilince fiyat segmenti, model güveni ve en yakın gerçek telefonlar
-![Fiyat Tahmini](ekran_goruntuleri/1_fiyat_tahmini.png)
+🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd/view?usp=sharing)
 
 **🛒 Telefon Kataloğu:** 970 gerçek telefon, TL fiyatlar, marka logoları ve filtreler
-![Telefon Kataloğu](ekran_goruntuleri/2_telefon_katalogu.png)
+🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1H00gzaTHNpeT5uFYHsX7p5rbm8FpNWHf/view?usp=sharing)
 
 **⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması
-![Karşılaştır](ekran_goruntuleri/3_karsilastir.png)
+🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1JCYjiNZqY0HPMuGOkD4iVuRtXl5neb3V/view?usp=sharing)
 
 **📊 Proje Hakkında:** Veri seti, segmentler ve model sonuçlarının özeti
-![Proje Hakkında](ekran_goruntuleri/4_proje_hakkinda.png)
+🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/129iSuU-p2AsIGvmo2wR4eBQivA3mjSKx/view?usp=sharing)
 
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatlarıdır. Sitede 1 ₹ ≈ 0,54 TL
 > kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevrilerek gösterilir. Marka adları ve logoları
