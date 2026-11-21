@@ -58,7 +58,7 @@ Geleneksel kural tabanlı fiyatlandırma yaklaşımları, donanım bileşenleri 
 - Canlı/gerçek zamanlı piyasa fiyat verilerinin (TL, USD, EUR) e-ticaret sitelerinden web scraping yöntemiyle anlık olarak çekilmesi.
 - Kur dalgalanmaları, vergi oranları veya marka algısı (Apple, Samsung vb. marka değeri) gibi donanım dışı makroekonomik faktörlerin modele dahil edilmesi.
 - Derin Öğrenme (Yapay Sinir Ağları / YSA) mimarilerinin veya büyük dil modellerinin projeye entegrasyonu.
-- Son kullanıcıya açık bir web/mobil arayüz (UI/UX) tasarımı veya canlı sunucu üzerinde çalışan REST API dağıtımı (FastAPI / Flask Deployment).
+- Canlı sunucu üzerinde çalışan REST API dağıtımı (FastAPI / Flask). *(Bunun yerine Streamlit ile bir tanıtım web arayüzü yapıldı, aşağıdaki **🌐 Web Arayüzü** bölümüne bakın.)*
 - İkinci el veya yenilenmiş (refurbished) cihazların kozmetik hasar, pil sağlığı ve kullanım süresine dayalı fiyatlandırması.
 
 ---
@@ -139,6 +139,7 @@ Sistemi dışarıdan kullanan **aktörleri** (veri analisti, araştırmacı, son
 | Dosya | Açıklama |
 | :--- | :--- |
 | `proje.ipynb` | KNN, Random Forest, XGBoost ve LightGBM kodu |
+| `mobil_fiyat_projesi.py` | Aynı kodun tek dosyalık Python sürümü (`python mobil_fiyat_projesi.py`) |
 | `en_iyi_model_rf.pkl` | Kaydedilen Random Forest modeli |
 | `scaler.pkl` | Kaydedilen StandardScaler |
 
@@ -152,9 +153,25 @@ Sistemi dışarıdan kullanan **aktörleri** (veri analisti, araştırmacı, son
 ### 📦 Veri
 | Dosya | Açıklama |
 | :--- | :--- |
-| `train.csv` | Veri seti (2000 satır, 21 sütun) |
+| `train.csv` | Veri seti (2000 satır, 21 sütun), kaynak: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) |
 
-> **Not:** `train.csv` depoda yer almıyorsa [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) sayfasından indirilip ana klasöre konulmalıdır.
+### 🌐 Web Arayüzü (`web_arayuzu/`)
+| Dosya | Açıklama |
+| :--- | :--- |
+| `app.py` | TeknoTahmin web sitesinin Streamlit kodu |
+| `requirements.txt` | Sitenin ihtiyaç duyduğu kütüphaneler |
+| `Dockerfile` | Sitenin Render'da Docker ile çalıştırılması için kurulum dosyası |
+| `.streamlit/config.toml` | Koyu tema ayarları |
+| `logolar.py` | Marka logoları (Simple Icons, tek renk SVG) |
+| `gercek_telefonlar.csv` | Sitedeki modelin eğitildiği gerçek telefon verisi |
+
+### 📱 Gerçek Telefon Verisiyle Analiz (v2)
+| Dosya | Açıklama |
+| :--- | :--- |
+| `gercek_telefonlar.csv` | 980 gerçek akıllı telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: Kaggle – Real World Smartphone's Dataset |
+| `gercek_telefon_projesi.py` / `PROJE_gercek.ipynb` | Aynı analiz adımlarının gerçek veriyle yapılmış hâli (20 bölüm) |
+| `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
+| `grafikler_gercek/` | Gerçek veriyle üretilen grafikler |
 
 ---
 
@@ -219,6 +236,30 @@ Gradient Boosting modelleri (XGBoost, LightGBM) Random Forest'ı yaklaşık 3–
 
 ---
 
+## 📱 Gerçek Telefon Verisiyle Analiz (v2)
+
+Kaggle'ın sentetik veri setine ek olarak, model **980 gerçek telefonun** gerçek satış fiyatlarıyla da denendi
+(Smartprix, Hindistan). En pahalı %1'lik lüks telefonlar (ör. Vertu) çıkarıldı, kalan **970 telefon** fiyatlarına göre
+4 eşit segmente bölündü: Düşük ₹3.499–12.999, Orta ₹12.999–19.990, Yüksek ₹19.990–34.999, Çok yüksek ₹34.999–163.980.
+Modelde 16 donanım özelliği kullanıldı (RAM, depolama, batarya, işlemci hızı, ekran, kamera, 5G, hızlı şarj vb.).
+
+| Model | Accuracy | Precision | Recall | F1-Score | 5-Fold CV |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| KNN (k=3, StandardScaler) | 0.7010 | 0.6982 | 0.7010 | 0.6963 | 0.6186 |
+| Random Forest | 0.7474 | 0.7441 | 0.7474 | 0.7430 | **0.7062** |
+| **XGBoost** | **0.7680** | **0.7651** | **0.7680** | **0.7636** | 0.6794 |
+| LightGBM | 0.7526 | 0.7495 | 0.7526 | 0.7462 | 0.6804 |
+
+**Bulgular:**
+- Gerçek veride başarı sentetik veriye göre düşük (%94 yerine %75 civarı). Bunun nedeni gerçek fiyatın marka değeri,
+  tasarım ve pazarlama gibi donanım dışı etkenlere de bağlı olması.
+- Sentetik veride RAM tek başına belirleyiciydi. Gerçek veride ise **işlemci hızı, depolama, RAM, hızlı şarj gücü ve
+  ekran çözünürlüğü** birlikte önemli.
+- Ölçeklendirme bu kez KNN'e yardımcı oldu (F1: 0.64 → 0.66). Çünkü gerçek veride tek bir özellik baskın değil.
+- Hatalar yine çoğunlukla komşu segmentler arasında (ör. Düşük ↔ Orta).
+
+---
+
 ## 🚀 Proje Durumu ve Gelecek Hedefleri
 
 ### ✅ Tamamlananlar
@@ -230,8 +271,38 @@ Gradient Boosting modelleri (XGBoost, LightGBM) Random Forest'ı yaklaşık 3–
 - Feature Importance analizi ve en önemli 5 özellikle model testi
 - Hata analizi ve eğitim süresi karşılaştırması
 - En iyi modelin `.pkl` olarak kaydedilmesi
+- 980 gerçek telefonla aynı analizin tekrarlanması (v2)
+- **TeknoTahmin** web arayüzü (Streamlit + Docker, Render üzerinde yayında)
 
 ### 🔭 Gelecek Hedefleri
 - **Ek Algoritmalar:** `CatBoost` ve Destek Vektör Makinelerinin (`SVM`) sisteme dahil edilmesi.
 - **RandomizedSearchCV:** Daha geniş parametre uzaylarında daha hızlı arama.
-- **Etkileşimli Web Arayüzü (Deployment):** Kullanıcıların bir cihazın donanım özelliklerini (RAM, batarya, kamera vb.) girip anlık fiyat segmenti tahmini alabileceği, **Streamlit** veya **FastAPI** tabanlı bir web arayüzünün geliştirilmesi.
+
+---
+
+## 🌐 Web Arayüzü: TeknoTahmin
+
+Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir Streamlit web sitesine dönüştürüldü
+(canlı: https://teknotahmin.onrender.com). Sitede 4 sekme var:
+
+- **🔮 Fiyat Tahmini:** RAM, depolama, işlemci, batarya, ekran, kamera, 5G ve hızlı şarj seçilince fiyat segmenti,
+  model güveni, segmentin gerçek fiyat aralığı ve bu özelliklere en yakın gerçek telefonlar gösterilir.
+- **🛒 Telefon Kataloğu:** 970 gerçek telefon, gerçek fiyatları ve marka logolarıyla mağaza kartları halinde listelenir.
+  Marka, segment, fiyat aralığı, 5G filtreleri, sıralama, arama ve "modelin yanıldıkları" filtresi vardır.
+- **⚖️ Karşılaştır:** İki gerçek telefon yan yana karşılaştırılır (gerçek segment ve modelin tahmini dahil).
+- **📊 Proje Hakkında:** Model sonuçlarının özeti.
+
+**Model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu yaklaşık **%76**.
+
+> **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatlarıdır. Sitede 1 ₹ ≈ 0,54 TL
+> kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevrilerek gösterilir. Marka adları ve logoları
+> sahiplerine aittir (logolar: Simple Icons).
+
+**Bilgisayarda çalıştırma:**
+```bash
+cd web_arayuzu
+python -m pip install -r requirements.txt
+streamlit run app.py
+```
+
+**Yayınlama:** Site [Render](https://render.com) üzerinde ücretsiz planda Docker ile yayınlanır (Root Directory: `web_arayuzu`).

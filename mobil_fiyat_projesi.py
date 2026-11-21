@@ -1,0 +1,301 @@
+# ============================================================
+# MOBİL CİHAZ FİYAT SEGMENTİ TAHMİNİ (KNN vs Random Forest)
+# ============================================================
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             f1_score, classification_report, confusion_matrix)
+
+GRAFIK_KLASORU = Path("grafikler")
+GRAFIK_KLASORU.mkdir(exist_ok=True)
+
+def metrikler(y_true, y_pred):
+    return {
+        "Accuracy": accuracy_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred, average="weighted", zero_division=0),
+        "Recall": recall_score(y_true, y_pred, average="weighted", zero_division=0),
+        "F1-Score": f1_score(y_true, y_pred, average="weighted", zero_division=0),
+    }
+
+# ------------------------------------------------------------
+print("--- 1. Veri Okuma ---")
+try:
+    taban = Path(__file__).resolve().parent
+except NameError:
+    taban = Path.cwd()
+df = pd.read_csv(taban / "train.csv")
+print("Satır/Sütun:", df.shape)
+print(df.head().to_string())
+
+# ------------------------------------------------------------
+print("\n--- 2. Veri İnceleme (EDA) ---")
+df.info()
+print("\nEksik değer toplamı:", df.isnull().sum().sum())
+print("Tekrarlı satır sayısı:", df.duplicated().sum())
+print("\nMantıksal tutarlılık kontrolü (0 olmaması gereken değerler):")
+for sutun in ["px_height", "px_width", "sc_h", "sc_w"]:
+    print(f"  {sutun} = 0 olan satır: {(df[sutun] == 0).sum()}")
+print("\nFiyat segmenti dağılımı:")
+print(df["price_range"].value_counts().sort_index())
+print("\nTemel istatistikler:")
+print(df.describe().T.round(2).to_string())
+
+plt.figure(figsize=(6, 4))
+sns.countplot(x="price_range", data=df)
+plt.title("Fiyat Segmenti Dağılımı")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "sinif_dagilimi.png", dpi=150)
+plt.show()
+
+plt.figure(figsize=(14, 11))
+sns.heatmap(df.corr(), cmap="coolwarm", center=0, annot=True, fmt=".2f", annot_kws={"size": 7})
+plt.title("Korelasyon Matrisi")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "korelasyon.png", dpi=150)
+plt.show()
+
+print("\nprice_range ile en yüksek korelasyonlar:")
+print(df.corr()["price_range"].drop("price_range").sort_values(ascending=False).head(5).round(3))
+
+# ------------------------------------------------------------
+print("\n--- 3. Eğitim/Test Ayrımı (%80 / %20) ---")
+X = df.drop("price_range", axis=1)
+y = df["price_range"]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y)
+print("X_train:", X_train.shape, "| X_test:", X_test.shape)
+
+# ------------------------------------------------------------
+print("\n--- 4. Ölçeklendirmenin KNN'e Etkisi (H3) ---")
+olcek_sonuclari = {}
+for ad, olcekleyici in [("Ölçeklendirmesiz", None),
+                        ("StandardScaler", StandardScaler()),
+                        ("MinMaxScaler", MinMaxScaler())]:
+    if olcekleyici is None:
+        Xtr, Xte = X_train, X_test
+    else:
+        Xtr = olcekleyici.fit_transform(X_train)   # sadece eğitime fit
+        Xte = olcekleyici.transform(X_test)
+    tahmin = KNeighborsClassifier().fit(Xtr, y_train).predict(Xte)
+    olcek_sonuclari[ad] = metrikler(y_test, tahmin)
+olcek_df = pd.DataFrame(olcek_sonuclari).T.round(4)
+print(olcek_df.to_string())
+
+# En iyi ölçekleyici ile devam
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ------------------------------------------------------------
+print("\n--- 5. KNN Hiperparametre Denemeleri ---")
+best_k, best_knn_f1 = None, -1.0
+for k in range(1, 31, 2):
+    preds = KNeighborsClassifier(n_neighbors=k).fit(X_train_scaled, y_train).predict(X_test_scaled)
+    m = metrikler(y_test, preds)
+    print(f"k={k:2d} -> Accuracy: %{m['Accuracy'] * 100:.2f} | F1-Score: {m['F1-Score']:.4f}")
+    if m["F1-Score"] > best_knn_f1:
+        best_knn_f1, best_k = m["F1-Score"], k
+
+knn_model = KNeighborsClassifier(n_neighbors=best_k).fit(X_train_scaled, y_train)
+y_pred_knn = knn_model.predict(X_test_scaled)
+print(f"\n[SEÇİLEN KNN] En iyi n_neighbors = {best_k}")
+
+# ------------------------------------------------------------
+print("\n--- 6. Random Forest Hiperparametre Optimizasyonu (GridSearchCV) ---")
+param_grid = {
+    "n_estimators": [100, 200, 300],
+    "max_depth": [None, 10, 20],
+    "min_samples_split": [2, 5],
+}
+grid = GridSearchCV(RandomForestClassifier(random_state=42), param_grid,
+                    cv=5, scoring="f1_weighted", n_jobs=-1)
+grid.fit(X_train, y_train)
+rf_model = grid.best_estimator_
+y_pred_rf = rf_model.predict(X_test)
+print("En iyi parametreler:", grid.best_params_)
+
+# ------------------------------------------------------------
+print("\n--- 6.5. Ek Karşılaştırma: XGBoost ve LightGBM ---")
+# Kurulum: pip install xgboost lightgbm
+ek_modeller = {}
+try:
+    from xgboost import XGBClassifier
+    xgb_model = XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.1,
+                              random_state=42, eval_metric="mlogloss")
+    xgb_model.fit(X_train, y_train)
+    ek_modeller["XGBoost"] = xgb_model.predict(X_test)
+    print("[BAŞARILI] XGBoost eğitildi.")
+except ImportError:
+    print("[ATLANDI] xgboost kurulu değil: pip install xgboost")
+try:
+    from lightgbm import LGBMClassifier
+    lgbm_model = LGBMClassifier(n_estimators=300, learning_rate=0.05,
+                                random_state=42, verbose=-1)
+    lgbm_model.fit(X_train, y_train)
+    ek_modeller["LightGBM"] = lgbm_model.predict(X_test)
+    print("[BAŞARILI] LightGBM eğitildi.")
+except ImportError:
+    print("[ATLANDI] lightgbm kurulu değil: pip install lightgbm")
+
+# ------------------------------------------------------------
+print("\n--- 7. Model Karşılaştırması (Rapor Tablosu) ---")
+tum_modeller = {f"KNN (k={best_k})": y_pred_knn, "Random Forest": y_pred_rf, **ek_modeller}
+sonuc_df = pd.DataFrame({ad: metrikler(y_test, p) for ad, p in tum_modeller.items()}).T.round(4)
+print(sonuc_df.to_string())
+sonuc_df.to_csv("sonuclar.csv")
+
+print("\n--- KNN Sınıflandırma Raporu ---")
+print(classification_report(y_test, y_pred_knn))
+print("--- Random Forest Sınıflandırma Raporu ---")
+print(classification_report(y_test, y_pred_rf))
+
+# ------------------------------------------------------------
+print("\n--- 8. Confusion Matrix ---")
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+for ax, baslik, y_pred in zip(axes, [f"KNN (k={best_k})", "Random Forest"], [y_pred_knn, y_pred_rf]):
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", cmap="Blues", ax=ax)
+    ax.set_title(f"{baslik} - Confusion Matrix")
+    ax.set_xlabel("Tahmin Edilen Sınıf")
+    ax.set_ylabel("Gerçek Sınıf")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "confusion_matrix.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 9. Feature Importance (Random Forest) ---")
+onem = pd.Series(rf_model.feature_importances_, index=X.columns).sort_values(ascending=False)
+print(onem.round(4).to_string())
+
+plt.figure(figsize=(8, 6))
+sns.barplot(x=onem.values, y=onem.index)
+plt.title("Random Forest - Özellik Önemi")
+plt.xlabel("Önem Skoru")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "feature_importance.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 10. Hipotez Özeti ---")
+knn_f1 = sonuc_df.iloc[0]["F1-Score"]
+rf_f1 = sonuc_df.loc["Random Forest", "F1-Score"]
+print(f"H1: En iyi F1 = {max(knn_f1, rf_f1):.4f} -> sınıflandırma "
+      f"{'başarılı, H1 kabul' if max(knn_f1, rf_f1) > 0.7 else 'zayıf, H1 ret'}")
+print(f"H2: KNN F1 = {knn_f1:.4f}, RF F1 = {rf_f1:.4f}, fark = {abs(knn_f1 - rf_f1):.4f}")
+print(f"H3: Ölçeklendirmesiz F1 = {olcek_df.loc['Ölçeklendirmesiz', 'F1-Score']:.4f}, "
+      f"StandardScaler F1 = {olcek_df.loc['StandardScaler', 'F1-Score']:.4f}")
+print("H4: En önemli 5 özellik:", ", ".join(onem.index[:5]))
+print("\nGrafikler 'grafikler' klasörüne, sonuç tablosu 'sonuclar.csv' dosyasına kaydedildi.")
+
+# ============================================================
+# EK ANALİZLER
+# ============================================================
+import time
+import joblib
+from sklearn.model_selection import cross_val_score, learning_curve
+from sklearn.pipeline import make_pipeline
+
+# ------------------------------------------------------------
+print("\n--- 11. KNN için CV ile k Seçimi (GridSearchCV) ---")
+knn_pipe = make_pipeline(StandardScaler(), KNeighborsClassifier())
+knn_grid = GridSearchCV(knn_pipe, {"kneighborsclassifier__n_neighbors": list(range(1, 31, 2))},
+                        cv=5, scoring="f1_weighted", n_jobs=-1)
+knn_grid.fit(X_train, y_train)
+print("CV ile en iyi k:", knn_grid.best_params_["kneighborsclassifier__n_neighbors"],
+      f"| CV F1: {knn_grid.best_score_:.4f}")
+
+k_listesi = list(range(1, 31, 2))
+k_skorlari = knn_grid.cv_results_["mean_test_score"]
+plt.figure(figsize=(7, 4))
+plt.plot(k_listesi, k_skorlari, marker="o")
+plt.title("KNN: k Değerine Göre CV F1-Score")
+plt.xlabel("k (n_neighbors)")
+plt.ylabel("F1-Score")
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "knn_k_grafigi.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 12. 5-Fold Cross-Validation Karşılaştırması ---")
+cv_modelleri = {"KNN": knn_grid.best_estimator_, "Random Forest": rf_model}
+if "XGBoost" in ek_modeller:
+    cv_modelleri["XGBoost"] = xgb_model
+if "LightGBM" in ek_modeller:
+    cv_modelleri["LightGBM"] = lgbm_model
+cv_sonuc = {}
+for ad, model in cv_modelleri.items():
+    skorlar = cross_val_score(model, X, y, cv=5, scoring="accuracy", n_jobs=-1)
+    cv_sonuc[ad] = {"CV Ortalama": skorlar.mean(), "CV Std": skorlar.std()}
+    print(f"{ad:14s} -> %{skorlar.mean() * 100:.2f} (± {skorlar.std() * 100:.2f})")
+pd.DataFrame(cv_sonuc).T.round(4).to_csv("cv_sonuclari.csv")
+
+# ------------------------------------------------------------
+print("\n--- 13. Eğitim ve Test Skoru (Overfitting Kontrolü) ---")
+for ad, model, Xtr, Xte in [("KNN", knn_model, X_train_scaled, X_test_scaled),
+                            ("Random Forest", rf_model, X_train, X_test)]:
+    tr = accuracy_score(y_train, model.predict(Xtr))
+    te = accuracy_score(y_test, model.predict(Xte))
+    print(f"{ad:14s} | Eğitim: %{tr * 100:.2f} | Test: %{te * 100:.2f} | Fark: %{(tr - te) * 100:.2f}")
+
+# ------------------------------------------------------------
+print("\n--- 14. Öğrenme Eğrisi (Random Forest) ---")
+boyutlar, tr_sk, te_sk = learning_curve(rf_model, X, y, cv=5, n_jobs=-1,
+                                        train_sizes=np.linspace(0.1, 1.0, 6))
+plt.figure(figsize=(7, 4))
+plt.plot(boyutlar, tr_sk.mean(axis=1), marker="o", label="Eğitim")
+plt.plot(boyutlar, te_sk.mean(axis=1), marker="o", label="Doğrulama (CV)")
+plt.title("Random Forest Öğrenme Eğrisi")
+plt.xlabel("Eğitim Örneği Sayısı")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "ogrenme_egrisi.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 15. En Önemli 5 Özellikle Model (H4 Testi) ---")
+ilk5 = list(onem.index[:5])
+rf5 = RandomForestClassifier(**grid.best_params_, random_state=42).fit(X_train[ilk5], y_train)
+acc5 = accuracy_score(y_test, rf5.predict(X_test[ilk5]))
+print("Kullanılan özellikler:", ", ".join(ilk5))
+print(f"Tüm özellikler: %{accuracy_score(y_test, y_pred_rf) * 100:.2f} | İlk 5 özellik: %{acc5 * 100:.2f}")
+
+# ------------------------------------------------------------
+print("\n--- 16. Önemli Özelliklerin Fiyat Segmentine Göre Dağılımı ---")
+fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+for ax, sutun in zip(axes, onem.index[:4]):
+    sns.boxplot(x="price_range", y=sutun, data=df, ax=ax)
+    ax.set_title(f"{sutun} - Fiyat Segmenti")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "boxplot_onemli_ozellikler.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 17. Hata Analizi ---")
+hatalar = pd.DataFrame({"Gerçek": y_test, "Tahmin": y_pred_rf})
+hatalar = hatalar[hatalar["Gerçek"] != hatalar["Tahmin"]]
+print(f"Random Forest toplam hatalı tahmin: {len(hatalar)} / {len(y_test)}")
+print("En sık karışan sınıf çiftleri:")
+print(hatalar.value_counts().head(5).to_string())
+
+# ------------------------------------------------------------
+print("\n--- 18. Eğitim Süresi Karşılaştırması ---")
+for ad, model, Xtr in [("KNN", KNeighborsClassifier(n_neighbors=best_k), X_train_scaled),
+                       ("Random Forest", RandomForestClassifier(**grid.best_params_, random_state=42), X_train)]:
+    t0 = time.perf_counter()
+    model.fit(Xtr, y_train)
+    print(f"{ad:14s} -> {time.perf_counter() - t0:.3f} saniye")
+
+# ------------------------------------------------------------
+print("\n--- 19. En İyi Modeli Kaydetme ---")
+joblib.dump(rf_model, "en_iyi_model_rf.pkl")
+joblib.dump(scaler, "scaler.pkl")
+print("[BAŞARILI] en_iyi_model_rf.pkl ve scaler.pkl kaydedildi.")
