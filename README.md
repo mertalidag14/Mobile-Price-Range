@@ -30,9 +30,13 @@ Geleneksel kural tabanlı fiyatlandırma yaklaşımları, donanım bileşenleri 
 
 ## 📁 Veri Seti
 
+Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yapıldı, ardından aynı adımlar gerçek telefon verisiyle tekrarlandı (v2). Değişikliğin nedeni en alttaki **🔄 Veri Setini Neden Değiştirdik?** bölümünde anlatılıyor.
+
+### 1. Eski veri seti (v1, sentetik)
+
 | Bilgi | Değer |
 | :--- | :--- |
-| **Kaynak** | Kaggle – *Mobile Price Classification* |
+| **Kaynak** | [Kaggle – *Mobile Price Classification*](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) |
 | **Dosya** | `train.csv` |
 | **Satır / Sütun** | 2000 satır, 21 sütun (20 özellik + 1 hedef) |
 | **Eksik Değer** | Yok |
@@ -40,6 +44,19 @@ Geleneksel kural tabanlı fiyatlandırma yaklaşımları, donanım bileşenleri 
 | **Sınıf Dağılımı** | Dengeli – her sınıfta 500 örnek |
 
 **Önemli değişkenler:** `battery_power` (mAh), `ram` (MB), `px_height` / `px_width` (piksel çözünürlüğü), `int_memory` (GB), `clock_speed` (GHz), `n_cores`, `fc` / `pc` (ön/arka kamera MP), `four_g`, `three_g`, `wifi`, `blue`, `dual_sim`, `touch_screen` (0/1).
+
+### 2. Yeni veri seti (v2, gerçek telefonlar)
+
+| Bilgi | Değer |
+| :--- | :--- |
+| **Kaynak** | Kaggle – *Real World Smartphone's Dataset* (Smartprix verisi), kullanılan kopya: [Hugging Face](https://huggingface.co/datasets/jason1966/abhijitdahatonde_real-world-smartphones-dataset) |
+| **Dosya** | `gercek_telefonlar.csv` |
+| **Satır / Sütun** | 980 gerçek telefon, 22 sütun (marka, model, fiyat ve donanım özellikleri) |
+| **Fiyat** | Gerçek satış fiyatı, Hindistan Rupisi (₹) |
+| **Hedef Değişken** | `price_range`: fiyata göre 4 eşit gruba (çeyrek) bölünerek oluşturuldu |
+| **Temizleme** | En pahalı %1'lik 10 lüks telefon çıkarıldı, birkaç eksik değer medyanla dolduruldu, analizde 970 telefon kaldı |
+
+**Kullanılan özellikler (16):** `ram_capacity`, `internal_memory`, `battery_capacity`, `processor_speed`, `num_cores`, `screen_size`, `refresh_rate`, `resolution_height`, `resolution_width`, `primary_camera_rear`, `primary_camera_front`, `num_rear_cameras`, `5G_or_not`, `fast_charging_available`, `fast_charging`, `extended_memory_available`.
 
 ---
 
@@ -185,15 +202,25 @@ cd Mobile-Price-Range
 # 2. Gerekli kütüphaneleri kurun
 python -m pip install pandas numpy scikit-learn matplotlib seaborn xgboost lightgbm joblib notebook
 
-# 3. Notebook'u açıp tüm hücreleri çalıştırın (train.csv aynı klasörde olmalı)
-jupyter notebook proje.ipynb
+# 3a. Eski (sentetik) veri setiyle analiz (train.csv aynı klasörde olmalı)
+jupyter notebook proje.ipynb          # ya da: python mobil_fiyat_projesi.py
+
+# 3b. Gerçek telefon verisiyle analiz (v2, gercek_telefonlar.csv aynı klasörde olmalı)
+jupyter notebook PROJE_gercek.ipynb   # ya da: python gercek_telefon_projesi.py
+
+# 4. Web sitesini bilgisayarda açmak için
+cd web_arayuzu
+python -m pip install -r requirements.txt
+streamlit run app.py
 ```
 
-VS Code kullanılıyorsa `proje.ipynb` dosyası açılıp **Run All** ile çalıştırılabilir.
+VS Code kullanılıyorsa notebook dosyası açılıp **Run All** ile çalıştırılabilir.
 
 ---
 
-## 📈 Sonuçlar
+## 📈 Sonuçlar (v1, sentetik veri seti)
+
+Gerçek telefon verisiyle elde edilen sonuçlar için aşağıdaki **📱 Gerçek Telefon Verisiyle Analiz (v2)** bölümüne bakın.
 
 Test seti: 400 örnek (%20, stratified). Metrikler ağırlıklı (weighted) ortalamadır.
 
@@ -306,3 +333,26 @@ streamlit run app.py
 ```
 
 **Yayınlama:** Site [Render](https://render.com) üzerinde ücretsiz planda Docker ile yayınlanır (Root Directory: `web_arayuzu`).
+
+
+---
+
+## 🔄 Veri Setini Neden Değiştirdik?
+
+Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başladık (eski veri seti: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)). Bu veri setiyle yapılan analiz (v1) projede olduğu gibi duruyor: `proje.ipynb`, `mobil_fiyat_projesi.py`, `train.csv`, `sonuclar.csv`, `grafikler/`.
+
+Çalışma ilerledikçe bu veri setinin bazı sınırlarını fark ettik ve analizi gerçek telefon verisiyle tekrarladık (v2):
+
+1. **Veri sentetik.** 2000 satırın hiçbiri gerçek bir telefon modeline karşılık gelmiyor. Telefonların marka ve model adı yok, bu yüzden sonuçları gerçek cihazlarla karşılaştıramıyorduk.
+2. **Gerçek fiyat yok.** Hedef değişken sadece 0–3 arası bir etiket. Bir segmentin kaç lira olduğunu söylemek mümkün değildi.
+3. **Sonuçlar gerçekçi değil.** Fiyat segmenti neredeyse tamamen RAM'e bağlı (korelasyon 0,92) ve modeller %93–94 gibi çok yüksek başarı veriyor. Gerçek piyasada fiyat tek bir özellikten bu kadar net tahmin edilemez.
+4. **Güncel değil.** RAM en fazla 4 GB, batarya en fazla yaklaşık 2000 mAh. Bugünün telefonları (8 GB+ RAM, 5000 mAh) bu aralığın tamamen dışında kalıyor, bu yüzden model güncel bir telefon için anlamlı tahmin yapamıyordu.
+
+**Yeni veri setiyle neler değişti?**
+- 980 **gerçek** telefon, marka ve model adlarıyla birlikte, **gerçek satış fiyatlarıyla** kullanıldı.
+- Segmentler gerçek fiyatlara göre 4 eşit gruba bölünerek oluşturuldu, böylece her segmentin fiyat aralığı belli.
+- Başarı %94'ten yaklaşık **%75'e** düştü (en iyi: XGBoost %76,8). Bu düşüş beklenen bir sonuç: gerçek fiyat donanımın yanında marka değeri, tasarım ve pazarlama gibi modelin göremediği etkenlere de bağlı. Bu yüzden v2 sonuçları gerçek dünyayı daha dürüst yansıtıyor.
+- En önemli özellikler artık tek başına RAM değil: **işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü** birlikte belirleyici.
+- Web sitesi (TeknoTahmin) bu sayede gerçek telefonları, gerçek fiyatlarıyla gösterebiliyor.
+
+Her iki analiz de aynı adımları (EDA, ölçeklendirme karşılaştırması, KNN, Random Forest, XGBoost, LightGBM, cross-validation, feature importance, hata analizi) izlediği için iki veri setinin sonuçları doğrudan karşılaştırılabilir.
