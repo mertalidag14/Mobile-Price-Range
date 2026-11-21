@@ -85,8 +85,8 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 | Üye | Rolü ve Sorumlulukları |
 | :--- | :--- |
 | **Mert Ali Dağ** | **Kodlama, Model Mimarisi & Web Geliştirme:** Veri ön işleme boru hatlarının (pipeline) kurulması, KNN ve Random Forest algoritmalarının kodlanması, hiperparametre ayarlamaları ve model performans metriklerinin teknik analizi. XGBoost/LightGBM karşılaştırması, cross-validation ve hata analizinin eklenmesi. Projenin 980 gerçek telefonluk veri setine taşınması ve analizin bu veriyle tekrarlanması (v2). **TeknoTahmin** web sitesinin (Streamlit, HTML/CSS) tasarlanıp kodlanması, Docker ile paketlenip Render üzerinde yayınlanması. GitHub reposunun, README'nin ve kanban tablosunun düzenlenmesi. |
-| **Gürkan Tural** | **Veri Analisti:** Ham veri setinin temizlenmesi, keşifçi veri analizi (EDA), donanım değişkenleri arasındaki istatistiksel korelasyonların incelenmesi ve bulguların anlaşılır grafiklerle görselleştirilmesi. |
-| **Efe Erdem** | **Araştırmacı Veri Analizi:** Sınıflandırma problemine yönelik literatürdeki benzer çalışmaların ve rakip yaklaşımların araştırılması, elde edilen deneysel sonuçların raporlanması ve proje dokümantasyonunun oluşturulması. |
+| **Gürkan Tural** | **Veri Analisti:** Ham veri setinin temizlenmesi, keşifçi veri analizi (EDA), donanım değişkenleri arasındaki istatistiksel korelasyonların incelenmesi ve bulguların anlaşılır grafiklerle görselleştirilmesi. Keşifçi veri analizi notebook'unun (`veri_inceleme_eda_hazir.ipynb`) hazırlanması: satır/sütun sayıları, veri tipleri ve özet istatistikler, fiyat segmentlerinin dağılımı, RAM, batarya ve ekran çözünürlüğünün fiyata etkisi ve korelasyon ısı haritası. Projede kullanılan veri setinden örnek kayıtların (`Proje İçin Kullanılan Veri Seti Örneği`) derlenmesi ve veri seti kaynağının belgelenmesi. EDA bulgularının modelleme aşamasına (en belirleyici özelliklerin RAM, batarya ve çözünürlük olması) yön vermesi. |
+| **Efe Erdem** | **Araştırmacı Veri Analizi:** Sınıflandırma problemine yönelik literatürdeki benzer çalışmaların ve rakip yaklaşımların araştırılması, elde edilen deneysel sonuçların raporlanması ve proje dokümantasyonunun oluşturulması. Literatür araştırması raporunun (`Literatur_Arastirmasi.md`) hazırlanması: Kaggle'daki benzer mobil fiyat sınıflandırması çalışmalarının ve akademik makalelerin incelenmesi, kullanılan algoritmaların (SVM, KNN, Logistic Regression, ANN/DNN, ağaç tabanlı modeller) ve başarı oranlarının karşılaştırmalı tabloyla özetlenmesi. Veri ön işleme adımlarını açıklayan dokümanın (`Veri_On_Isleme.md`) ve veri kalitesi sorunlarını inceleyen hata ayıklama raporunun (`Veri_seti_hata_ayıklama_raporu.md`) yazılması. Proje dokümantasyonunun düzenli tutulması ve sonuçların raporlanmasına katkı. |
 
 ---
 
@@ -211,6 +211,7 @@ classDiagram
     Katalog "1" o-- "*" Telefon
     TeknoTahminSitesi *-- Katalog
     TeknoTahminSitesi ..> ModelEgitici : Random Forest kullanır
+    note "👥 Hazırlayanlar: Mert Ali Dağ · Gürkan Tural · Efe Erdem"
 ```
 
 **Sınıfların görevleri:**
@@ -263,6 +264,7 @@ flowchart TD
     O --> P[Render üzerinde yayınla]
     P --> Q[Kullanıcı tahmin alır, katalogda gezer, karşılaştırır]
     Q --> R([Bitir])
+    R ~~~ ekipA["👥 Hazırlayanlar: Mert Ali Dağ · Gürkan Tural · Efe Erdem"]
 ```
 
 **Akışın adımları:**
@@ -287,8 +289,8 @@ title: "TeknoTahmin – Kullanım Senaryosu Diyagramı (Use Case Diagram)"
 ---
 flowchart LR
     kullanici["👤 Son Kullanıcı"]
-    analist["👤 Veri Analisti / Araştırmacı"]
-    gelistirici["👤 Geliştirici"]
+    analist["👤 Veri Analisti / Araştırmacı<br/>Gürkan Tural · Efe Erdem"]
+    gelistirici["👤 Geliştirici<br/>Mert Ali Dağ"]
 
     subgraph sistem["TeknoTahmin Sistemi"]
         direction TB
@@ -315,6 +317,7 @@ flowchart LR
     gelistirici --- uc9
     uc6 -. include .-> uc8
     uc1 -. include .-> uc8
+    sistem ~~~ ekipU["👥 Hazırlayanlar: Mert Ali Dağ · Gürkan Tural · Efe Erdem"]
 ```
 
 **Aktörler ve kullanım senaryoları:**
@@ -322,8 +325,8 @@ flowchart LR
 | Aktör | Kim? | Yapabildikleri |
 | :--- | :--- | :--- |
 | 👤 **Son Kullanıcı** | Telefon almayı düşünen ya da bir telefonun fiyatını merak eden herkes | Özellikleri girip **fiyat segmenti tahmini alır**, **katalogda** gerçek telefonları arar ve filtreler, **iki telefonu karşılaştırır**, proje sonuçlarını inceler. |
-| 👤 **Veri Analisti / Araştırmacı** | Projedeki analizi yapan ekip üyeleri | **Veri setini yükler ve temizler**, **modelleri eğitip karşılaştırır**, grafik ve rapor üretir, sonuçları yorumlar. |
-| 👤 **Geliştirici** | Siteyi hazırlayan ve yayınlayan kişi | En iyi **modeli kaydeder**, siteyi **Docker ile paketleyip Render'da yayınlar** ve güncel tutar. |
+| 👤 **Veri Analisti / Araştırmacı** | **Gürkan Tural, Efe Erdem**: projedeki veri analizini ve araştırmayı yapan ekip üyeleri | **Veri setini yükler ve temizler**, **modelleri eğitip karşılaştırır**, grafik ve rapor üretir, sonuçları yorumlar. |
+| 👤 **Geliştirici** | **Mert Ali Dağ**: modeli ve siteyi hazırlayıp yayınlayan kişi | En iyi **modeli kaydeder**, siteyi **Docker ile paketleyip Render'da yayınlar** ve güncel tutar. |
 
 **İlişkiler:**
 - **Düz çizgiler:** Aktörün o kullanım senaryosunu doğrudan başlattığını gösterir.
