@@ -1,0 +1,5 @@
+,CV Ortalama,CV Std
+KNN,0.62,0.0146
+Random Forest,0.8755,0.0099
+XGBoost,0.913,0.0129
+LightGBM,0.9085,0.0096
