@@ -208,6 +208,26 @@ classDiagram
     TeknoTahminSitesi ..> ModelEgitici : Random Forest kullanır
 ```
 
+**Sınıfların görevleri:**
+
+| Sınıf | Görevi | Koddaki karşılığı |
+| :--- | :--- | :--- |
+| `VeriYukleyici` | Seçilen veri setini (v1 sentetik veya v2 gerçek telefonlar) dosyadan okur. | `pd.read_csv(...)` (1. bölüm) |
+| `VeriOnIsleyici` | Eksik değerleri doldurur, en pahalı %1'lik lüks telefonları çıkarır, fiyatı 4 segmente böler, veriyi %80/%20 ayırır ve KNN için ölçeklendirir. | 2, 3, 5 ve 6. bölümler |
+| `KesifciAnaliz` | Sınıf dağılımı, korelasyon ısı haritası ve boxplot grafiklerini üretir. | 4 ve 17. bölümler |
+| `ModelEgitici` | KNN, Random Forest, XGBoost ve LightGBM modellerini GridSearchCV ile en iyi parametrelerle eğitir. | 7, 8 ve 9. bölümler |
+| `ModelDegerlendirici` | Accuracy/Precision/Recall/F1, confusion matrix, 5-fold CV, öğrenme eğrisi, özellik önemi ve hata analizini hesaplar. | 10–18. bölümler |
+| `ModelKaydedici` | En iyi modeli `.pkl` dosyası olarak kaydeder, gerektiğinde geri yükler. | `joblib.dump` (20. bölüm) |
+| `Telefon` | Katalogdaki tek bir gerçek telefonu temsil eder. Fiyatı ₹'den TL'ye çevirir. | `gercek_telefonlar.csv` satırı |
+| `Katalog` | Telefonları marka, segment, fiyat ve 5G'ye göre filtreler, sıralar, arar ve sayfalara böler. | `web_arayuzu/app.py` katalog sekmesi |
+| `TeknoTahminSitesi` | Kullanıcıya fiyat tahmini, benzer telefonlar, karşılaştırma ve proje özetini sunan web uygulaması. | `web_arayuzu/app.py` |
+
+**İlişkiler:**
+- **Düz oklar (→):** Verinin bir sınıftan diğerine aktarıldığı akış. Ham veri önce ön işlemeye, oradan EDA'ya ve model eğitimine gider. Eğitilen modeller değerlendirilir, en iyisi kaydedilir.
+- **İçi boş elmas (o--) Toplama (aggregation):** Bir katalog birden çok telefondan oluşur. Telefonlar katalogdan bağımsız da var olabilir (veri setinde dururlar).
+- **İçi dolu elmas (*--) Bileşim (composition):** Katalog, web sitesinin bir parçasıdır. Site olmadan katalog da çalışmaz.
+- **Kesikli ok (..>) Bağımlılık:** Web sitesi, tahmin yapmak için model eğitim adımında üretilen Random Forest modeline bağımlıdır.
+
 ### 2. Aktivite Diyagramı (Activity Diagram)
 
 Sistemin uçtan uca **dinamik iş akışını** adım adım görselleştirir: veri setinin seçilmesi ve temizlenmesinden model eğitimine, değerlendirmeye ve modelin web sitesi olarak yayınlanmasına kadar.
@@ -236,6 +256,18 @@ flowchart TD
     P --> Q[Kullanıcı tahmin alır, katalogda gezer, karşılaştırır]
     Q --> R([Bitir])
 ```
+
+**Akışın adımları:**
+1. **Veri seti seçimi (karar noktası):** Analiz ya sentetik Kaggle verisiyle (v1) ya da 980 gerçek telefonla (v2) başlar. İki yol da aynı adımlara bağlanır, böylece sonuçlar karşılaştırılabilir.
+2. **Gerçek veriye özel temizlik:** v2'de birkaç eksik değer medyanla doldurulur ve fiyat dağılımını bozan en pahalı %1'lik lüks telefonlar (ör. Vertu) çıkarılır. Ardından telefonlar fiyatlarına göre 4 eşit segmente (çeyreklere) ayrılır. v1'de bu adım gerekmez, çünkü segmentler hazır gelir.
+3. **Keşifçi veri analizi:** Sınıf dağılımı, korelasyonlar ve aykırı değerler grafiklerle incelenir.
+4. **Eğitim/test ayrımı:** Veri %80 eğitim, %20 test olarak, segment oranları korunarak (stratified) bölünür.
+5. **Ölçeklendirme kararı (karar noktası):** KNN mesafe tabanlı olduğu için ölçeklendirmeye duyarlıdır, bu yüzden StandardScaler ve MinMaxScaler denenir. Ağaç tabanlı modeller (Random Forest, XGBoost, LightGBM) ham değerlerle çalışır.
+6. **Hiperparametre araması ve eğitim:** GridSearchCV ile her model için en iyi parametreler 5-fold cross-validation ile bulunur ve modeller eğitilir.
+7. **Değerlendirme:** Test seti metrikleri, confusion matrix, cross-validation, öğrenme eğrisi (overfitting kontrolü), özellik önemi ve hata analizi hesaplanır.
+8. **Kaydetme:** En iyi model `.pkl` dosyası olarak saklanır.
+9. **Yayınlama:** Model TeknoTahmin web sitesine entegre edilir, Docker ile paketlenir ve Render'da herkesin erişebileceği şekilde yayınlanır.
+10. **Kullanım:** Son kullanıcı sitede tahmin alır, katalogda gezinir ve telefonları karşılaştırır.
 
 ### 3. Kullanım Senaryosu Diyagramı (Use Case Diagram)
 
@@ -273,6 +305,19 @@ flowchart LR
     uc6 -. include .-> uc8
     uc1 -. include .-> uc8
 ```
+
+**Aktörler ve kullanım senaryoları:**
+
+| Aktör | Kim? | Yapabildikleri |
+| :--- | :--- | :--- |
+| 👤 **Son Kullanıcı** | Telefon almayı düşünen ya da bir telefonun fiyatını merak eden herkes | Özellikleri girip **fiyat segmenti tahmini alır**, **katalogda** gerçek telefonları arar ve filtreler, **iki telefonu karşılaştırır**, proje sonuçlarını inceler. |
+| 👤 **Veri Analisti / Araştırmacı** | Projedeki analizi yapan ekip üyeleri | **Veri setini yükler ve temizler**, **modelleri eğitip karşılaştırır**, grafik ve rapor üretir, sonuçları yorumlar. |
+| 👤 **Geliştirici** | Siteyi hazırlayan ve yayınlayan kişi | En iyi **modeli kaydeder**, siteyi **Docker ile paketleyip Render'da yayınlar** ve güncel tutar. |
+
+**İlişkiler:**
+- **Düz çizgiler:** Aktörün o kullanım senaryosunu doğrudan başlattığını gösterir.
+- **«include» (kesikli oklar):** "Fiyat segmenti tahmini al" ve "Modelleri eğit ve karşılaştır" senaryoları her zaman **kaydedilmiş modeli** kullanır. Tahmin, eğitilmiş model olmadan yapılamaz.
+- **Sistem sınırı (gri kutu):** TeknoTahmin sisteminin sunduğu işlevler kutunun içinde, aktörler ise dışındadır.
 
 > **İlk sürüm diyagramlar (v1, Google Drive):** [Sınıf Diyagramı](https://drive.google.com/file/d/1wXQ1T78jBfvHYGDIdV7gmmJJrdiNILgY/view) · [Aktivite Diyagramı](https://drive.google.com/file/d/1sY0KN6_H-XqaEXJlFyjsmkQT3QytY3K5/view) · [Kullanım Senaryosu Diyagramı](https://drive.google.com/file/d/1OTLalFktwd552cqEhQhItV4Ar7u9I8-s/view)
 
