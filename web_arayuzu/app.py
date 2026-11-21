@@ -269,6 +269,11 @@ COZUNURLUK_SECENEK = grup_secenekleri("resolution_height", {
     "HD (düşük)": (0, 1000), "HD+": (1000, 2000), "Full HD+": (2000, 2900), "2K / QHD+ (en net)": (2900, 99999)},
     lambda x: f"{x:.0f} piksel")
 YENILEME_SECENEK = sorted(df["refresh_rate"].unique())
+BATARYA_GRUP = {"4000 mAh altı": (0, 4000), "4000 – 4499 mAh": (4000, 4500), "4500 – 4999 mAh": (4500, 5000),
+                "5000 – 5499 mAh": (5000, 5500), "5500 – 5999 mAh": (5500, 6000), "6000 mAh ve üzeri": (6000, 10 ** 6)}
+BATARYA_SECENEK = grup_secenekleri("battery_capacity", BATARYA_GRUP, lambda x: f"{x:.0f} mAh")
+BATARYA_ARALIGI = {etiket: aralik for etiket, aralik in zip(BATARYA_SECENEK, BATARYA_GRUP.values())}
+KAMERA_SECENEK = sorted(df["primary_camera_rear"].round().astype(int).unique())
 
 
 def gb_yaz(x):
@@ -382,8 +387,10 @@ with sekme_tahmin:
         else:
             # Model yok: kullanıcı aklındaki özellikleri yazar
             c3, c4 = st.columns(2)
-            batarya = c3.number_input("Batarya (mAh)", 1000, 10000, None, 100, placeholder="ör. 5000")
-            kamera = c4.number_input("Ana kamera (MP)", 2, 200, None, 1, placeholder="ör. 50")
+            batarya_sec = c3.selectbox("Batarya", list(BATARYA_SECENEK), index=None, placeholder="Seç")
+            kamera = c4.selectbox("Ana kamera", KAMERA_SECENEK, index=None, format_func=lambda x: f"{x} MP",
+                                  placeholder="Seç")
+            batarya = BATARYA_SECENEK.get(batarya_sec)
             with st.expander("Diğer özellikler (biliyorsan seç, tahmin için gerekli)"):
                 c5, c6 = st.columns(2)
                 islemci_sec = c5.selectbox("İşlemci", list(ISLEMCI_SECENEK), index=None, placeholder="Seç")
@@ -402,8 +409,8 @@ with sekme_tahmin:
             cozunurluk = COZUNURLUK_SECENEK.get(cozunurluk_sec)
             g5 = g5_sec == "Var"
             hazir = None not in (ram, hafiza, islemci, batarya, sarj, g5_sec, ekran, yenileme, cozunurluk, kamera)
-            st.caption("Telefonunun adını hatırlamıyorsan aklındaki özellikleri yaz, uyan telefonlar sağda listelenir. "
-                       "Diğer özellikleri de doldurursan model fiyat segmentini de tahmin eder.")
+            st.caption("Telefonunun adını hatırlamıyorsan aklındaki özellikleri seç, uyan telefonlar sağda listelenir. "
+                       "Diğer özellikleri de seçersen model fiyat segmentini de tahmin eder.")
 
     with sag:
         # 1) Tahmin (model seçilip RAM/depolama seçildiyse ya da tüm özellikler yazıldıysa)
@@ -446,10 +453,11 @@ with sekme_tahmin:
                 uyan = uyan[uyan["ram_capacity"] == ram]
             if "internal_memory" in girilen:
                 uyan = uyan[uyan["internal_memory"] == hafiza]
-            if "battery_capacity" in girilen and not secili:  # yazılan bataryaya ±300 mAh yakın olanlar
-                uyan = uyan[(uyan["battery_capacity"] - batarya).abs() <= 300]
+            if "battery_capacity" in girilen and not secili:  # seçilen batarya aralığındakiler
+                alt, ust = BATARYA_ARALIGI[batarya_sec]
+                uyan = uyan[(uyan["battery_capacity"] >= alt) & (uyan["battery_capacity"] < ust)]
             if "primary_camera_rear" in girilen and not secili:
-                uyan = uyan[uyan["primary_camera_rear"] == kamera]
+                uyan = uyan[uyan["primary_camera_rear"].round() == kamera]
             if uyan.empty:
                 st.info("Bu isme ve özelliklere uyan telefon bulunamadı. Bir seçimi kaldırmayı ya da değiştirmeyi dene.")
             else:
