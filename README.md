@@ -95,6 +95,16 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 ### 🐍 Programlama Dili & Geliştirme Ortamı
 - **Python 3.x:** Zengin veri bilimi ekosistemi ve okunabilir sözdizimi nedeniyle projenin ana geliştirme dili olarak tercih edilmiştir.
 - **VS Code / Jupyter Notebook:** İnteraktif veri keşfi, adım adım kod testleri ve görselleştirme çıktılarının anlık takibi için hibrit çalışma ortamı olarak kullanılmıştır.
+- **HTML & CSS:** Web sitesindeki kartlar, sonuç kutusu, marka şeridi, cam efektli koyu tasarım ve mobil uyumlu (responsive) düzen için Streamlit sayfasına gömülü olarak kullanılmıştır.
+- **SVG:** Bulanık telefon çizimlerinden oluşan arka plan, telefon ikonları ve marka logoları vektörel grafik olarak çizilmiştir.
+- **Dockerfile & TOML:** Sitenin sunucuda nasıl kurulacağı `Dockerfile` ile, koyu tema ayarları `.streamlit/config.toml` ile tanımlanmıştır.
+
+### 🌐 Web Sitesi ve Yayınlama Teknolojileri
+- **Streamlit:** Python koduyla web arayüzü oluşturmak için kullanılan çatı. Kaydırıcılar, filtreler, sekmeler ve sayfalama Streamlit bileşenleriyle yapılmıştır.
+- **Docker:** Sitenin her ortamda aynı şekilde çalışması için uygulama `python:3.13-slim` tabanlı bir konteynere paketlenmiştir.
+- **Render:** Docker konteyneri ücretsiz planda Render üzerinde yayınlanmaktadır (Frankfurt sunucusu).
+- **Git & GitHub:** Sürüm kontrolü, kodun paylaşımı ve Render'ın kodu çektiği depo. Görevler GitHub Projects kanban tablosuyla takip edilmiştir.
+- **Simple Icons:** Sitedeki marka logoları için kullanılan açık lisanslı (CC0) tek renk ikon seti.
 
 ### 📚 Temel Veri Bilimi Kütüphaneleri
 - **Pandas & NumPy:** Tablosal veri manipülasyonu, eksik veri yönetimi, filtreleme ve çok boyutlu matris/vektör hesaplamaları.
