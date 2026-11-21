@@ -167,6 +167,15 @@ border: 1px solid color-mix(in srgb, var(--renk) 45%, transparent); }}
 .marka {{ display: inline-flex; align-items: center; gap: .45rem; padding: .35rem .9rem; border-radius: 12px; font-weight: 800; font-size: .95rem; letter-spacing: .01em; color: #fff;
 background: linear-gradient(135deg, rgba(167,139,250,.18), rgba(96,165,250,.10)); border: 1px solid rgba(255,255,255,.14); }}
 .marka small {{ font-weight: 600; color: rgba(255,255,255,.55); margin-left: .35rem; font-size: .72rem; }}
+.mini-izgara {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .6rem; margin-top: .4rem; }}
+.mini-kart {{ display: flex; gap: .7rem; align-items: center; padding: .6rem .7rem; border-radius: 14px;
+background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }}
+.mini-kart:hover {{ border-color: color-mix(in srgb, var(--renk) 70%, transparent); }}
+.mini-isim {{ font-weight: 800; color: #fff; font-size: .9rem; display: flex; gap: .3rem; align-items: center; line-height: 1.2; }}
+.mini-isim svg {{ fill: #fff; flex: none; }}
+.mini-bilgi {{ font-size: .74rem; color: rgba(255,255,255,.7); margin-top: .15rem; }}
+.mini-fiyat {{ font-weight: 800; color: #fff; font-size: .95rem; margin-top: .2rem; }}
+.mini-fiyat .rozet {{ font-size: .62rem; margin-left: .3rem; vertical-align: middle; }}
 .not {{ color: rgba(255,255,255,.5); font-size: .78rem; text-align: center; margin-top: 1.6rem; }}
 .stTabs [data-baseweb="tab-list"] {{ gap: .4rem; }}
 .stTabs [data-baseweb="tab"] {{ background: rgba(255,255,255,.06); border-radius: 12px; padding: .4rem 1rem; }}
@@ -234,6 +243,22 @@ BATARYA_ARALIK = {"4000 mAh altı": (0, 3999), "4000 – 4999 mAh": (4000, 4999)
                   "6000 mAh ve üzeri": (6000, 100000)}
 
 
+def gb_yaz(x):
+    return f"{x / 1024:g} TB" if x >= 1024 else f"{x:g} GB"
+
+
+def mini_kart(r):
+    # Tahmin ekranındaki görselli küçük telefon kartı (çizilmiş telefon + marka logosu)
+    ad, ikon, renk = SEGMENTLER[r.segment]
+    bilgi = LOGOLAR.get(r.brand_name)
+    marka_logo = logo(r.marka, 13) if bilgi and not bilgi[5] else ""
+    return (f'<div class="mini-kart" style="--renk:{renk}">{telefon_ikonu(renk, 54)}'
+            f'<div><div class="mini-isim">{marka_logo}{r.isim}</div>'
+            f'<div class="mini-bilgi">{r.ram_capacity:g} GB RAM · {gb_yaz(r.internal_memory)} · '
+            f'{r.battery_capacity:.0f} mAh · {r.primary_camera_rear:g} MP</div>'
+            f'<div class="mini-fiyat">{tl(r.price)}<span class="rozet">{ikon} {ad}</span></div></div></div>')
+
+
 def sarj_yazisi(watt):
     return f"{watt:.0f} W şarj" if watt else "standart şarj"
 
@@ -281,16 +306,26 @@ with sekme_tahmin:
     gercek_fiyat = None
     with sol:
         modeller = sorted(df["temel_model"].unique(), key=str.lower)
-        secili = st.selectbox("📱 Telefon modeli (biliyorsan yaz, bilmiyorsan boş bırak)", modeller, index=None,
-                              placeholder="Model yaz veya seç, ör. iPhone 13")
+        isim_arama = st.text_input("📱 Telefon adı (biliyorsan yaz, bilmiyorsan boş bırak)",
+                                   placeholder="ör. iPhone, Galaxy S23, Redmi Note")
+        kelimeler = isim_arama.lower().split()
+        eslesen_modeller = [m for m in modeller if all(k in m.lower() for k in kelimeler)] if kelimeler else []
+        secili = None
+        if kelimeler and not eslesen_modeller:
+            st.warning("Bu isimde telefon bulunamadı. Yazımı kontrol et ya da sadece markayı yaz (ör. Samsung).")
+        elif eslesen_modeller:
+            secili = st.selectbox(f"Hangi model? ({len(eslesen_modeller)} model bulundu, sağda görselleriyle listeleniyor)",
+                                  eslesen_modeller, index=0 if len(eslesen_modeller) == 1 else None,
+                                  placeholder="Modeli seç ya da aşağıdan özellik seçerek listeyi daralt")
         varyantlar = df[df["temel_model"] == secili] if secili else df
-        ram_secenek = sorted(set(varyantlar["ram_capacity"]) | ({4, 6, 8, 12, 16} if secili else set()))
-        depo_secenek = sorted(set(varyantlar["internal_memory"]) | ({64, 128, 256, 512, 1024} if secili else set()))
+        # Seçenekler sabit tutuluyor: model seçilince yapılan RAM/depolama seçimi sıfırlanmasın
+        ram_secenek = sorted(set(df["ram_capacity"]) | {4, 6, 8, 12, 16})
+        depo_secenek = sorted(set(df["internal_memory"]) | {64, 128, 256, 512, 1024})
 
         st.markdown('<div class="bolum">⚙️ Özellikler</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        ram = c1.selectbox("RAM", ram_secenek, index=None, format_func=gb, placeholder="RAM seç / yaz")
-        hafiza = c2.selectbox("Depolama", depo_secenek, index=None, format_func=gb, placeholder="Depolama seç / yaz")
+        ram = c1.selectbox("RAM", ram_secenek, index=None, format_func=gb, placeholder="RAM seç / yaz", key="t_ram")
+        hafiza = c2.selectbox("Depolama", depo_secenek, index=None, format_func=gb, placeholder="Depolama seç / yaz", key="t_depo")
 
         if secili:
             # Model seçildi: sabit özellikler veri setinden gelir
@@ -363,23 +398,28 @@ with sekme_tahmin:
                 f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>{gercek}'
                 f'<div style="margin-top:1rem">{cubuklar}</div></div>', unsafe_allow_html=True)
 
-        # 2) Model yazılmadıysa: girilen özelliklere uyan gerçek telefonlar
+        # 2) Yazılan isme ve seçilen özelliklere uyan gerçek telefonlar (görselli kartlar, anında süzülür)
         girilen = {k: v for k, v in {"ram_capacity": ram, "internal_memory": hafiza, "battery_capacity": batarya,
-                                     "primary_camera_rear": kamera}.items() if v is not None} if not secili else {}
-        if girilen:
-            uyan = df
+                                     "primary_camera_rear": kamera}.items() if v is not None}
+        if kelimeler or girilen:
+            if secili:
+                uyan = varyantlar
+            elif kelimeler:
+                uyan = df[df["temel_model"].isin(eslesen_modeller)]
+            else:
+                uyan = df
             if "ram_capacity" in girilen:
                 uyan = uyan[uyan["ram_capacity"] == ram]
             if "internal_memory" in girilen:
                 uyan = uyan[uyan["internal_memory"] == hafiza]
-            if "battery_capacity" in girilen:  # yazılan bataryaya ±300 mAh yakın olanlar
+            if "battery_capacity" in girilen and not secili:  # yazılan bataryaya ±300 mAh yakın olanlar
                 uyan = uyan[(uyan["battery_capacity"] - batarya).abs() <= 300]
-            if "primary_camera_rear" in girilen:
+            if "primary_camera_rear" in girilen and not secili:
                 uyan = uyan[uyan["primary_camera_rear"] == kamera]
             if uyan.empty:
-                st.info("Bu özelliklerin hepsine uyan telefon bulunamadı. Bir özelliği silmeyi ya da değiştirmeyi dene.")
+                st.info("Bu isme ve özelliklere uyan telefon bulunamadı. Bir seçimi kaldırmayı ya da değiştirmeyi dene.")
             else:
-                if not hazir:
+                if not hazir and not secili:
                     dagilim = uyan["segment"].value_counts(normalize=True).reindex(range(4), fill_value=0)
                     en_cok = int(dagilim.idxmax())
                     ad, ikon, renk = SEGMENTLER[en_cok]
@@ -394,19 +434,17 @@ with sekme_tahmin:
                         f'<div class="fiyat" style="font-size:1.6rem">{tl(uyan["price"].min())} – {tl(uyan["price"].max())}</div>'
                         f'<div class="aralik">Bu telefonların gerçek fiyat aralığı</div>'
                         f'<div style="margin-top:1rem">{cubuklar}</div></div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="bolum" style="margin-top:1.2rem">📱 Bu özelliklere uyan telefonlar '
-                            f'({len(uyan)})</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="bolum" style="margin-top:1.2rem">📱 Uyan telefonlar ({len(uyan)})</div>',
+                            unsafe_allow_html=True)
                 gosterilecek = uyan.sort_values(["avg_rating", "price"], ascending=[False, True],
-                                                na_position="last").head(10)
-                st.markdown("".join(
-                    f'<div class="cubuk" style="grid-template-columns:1fr auto"><span class="ad">'
-                    f'{SEGMENTLER[r.segment][1]} {r.isim}</span><span class="yuzde">{tl(r.price)}</span></div>'
-                    for r in gosterilecek.itertuples()), unsafe_allow_html=True)
-                if len(uyan) > 10:
-                    st.caption("En beğenilen 10 tanesi gösteriliyor. Hepsini görmek için Telefon Kataloğu'ndaki filtreleri kullan.")
+                                                na_position="last").head(12)
+                st.markdown('<div class="mini-izgara">' + "".join(mini_kart(r) for r in gosterilecek.itertuples())
+                            + '</div>', unsafe_allow_html=True)
+                if len(uyan) > 12:
+                    st.caption("En beğenilen 12 tanesi gösteriliyor. RAM, depolama gibi özellikleri seçerek listeyi daralt.")
 
         # 3) Hiçbir şey girilmediyse yönlendirme
-        if not hazir and not girilen:
+        if not hazir and not girilen and not kelimeler:
             st.markdown(
                 '<div class="sonuc" style="--renk:#a78bfa">'
                 '<div class="ust">Tahmin edilen segment</div>'
