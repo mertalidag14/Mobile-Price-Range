@@ -310,7 +310,7 @@ Modelde 16 donanım özelliği kullanıldı (RAM, depolama, batarya, işlemci h�
 ## 🌐 Web Arayüzü: TeknoTahmin
 
 Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir Streamlit web sitesine dönüştürüldü
-(canlı: https://teknotahmin.onrender.com). Sitede 4 sekme var:
+(canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 4 sekme var:
 
 - **🔮 Fiyat Tahmini:** RAM, depolama, işlemci, batarya, ekran, kamera, 5G ve hızlı şarj seçilince fiyat segmenti,
   model güveni, segmentin gerçek fiyat aralığı ve bu özelliklere en yakın gerçek telefonlar gösterilir.
