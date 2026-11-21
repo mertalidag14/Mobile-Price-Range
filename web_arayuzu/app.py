@@ -227,6 +227,13 @@ def segment_araligi(s):
     return f"{tl(SINIRLAR[s])} – {tl(SINIRLAR[s + 1])}"
 
 
+# Filtre aralıkları (alt, üst dahil)
+KAMERA_ARALIK = {"12 MP ve altı": (0, 12.9), "13 – 48 MP": (13, 48.9), "50 – 64 MP": (50, 64.9),
+                 "65 MP ve üzeri": (65, 1000)}
+BATARYA_ARALIK = {"4000 mAh altı": (0, 3999), "4000 – 4999 mAh": (4000, 4999), "5000 – 5999 mAh": (5000, 5999),
+                  "6000 mAh ve üzeri": (6000, 100000)}
+
+
 def sarj_yazisi(watt):
     return f"{watt:.0f} W şarj" if watt else "standart şarj"
 
@@ -263,8 +270,8 @@ sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_hakkinda = st.tabs(
 # ------------------------------------------------------------
 with sekme_tahmin:
     st.markdown('<div class="baslik">Telefonun hangi fiyat segmentinde?</div>'
-                '<div class="alt">Telefonunun modelini seç, sabit özellikleri otomatik gelsin. Sadece RAM ve '
-                'depolamayı seçmen yeterli. İstersen özellikleri kendin de yazabilirsin.</div>',
+                '<div class="alt">Telefonunun modelini seç, sabit özellikleri otomatik gelsin. Modelini hatırlamıyorsan '
+                'aklındaki özellikleri (RAM, depolama, batarya, kamera) yaz, uyan telefonları bul.</div>',
                 unsafe_allow_html=True)
 
     def gb(x):
@@ -273,123 +280,147 @@ with sekme_tahmin:
     sol, sag = st.columns([1.1, 1], gap="large")
     gercek_fiyat = None
     with sol:
-        mod = st.radio("Nasıl girmek istersin?", ["📱 Telefon modelini seç", "✍️ Özellikleri kendim yazayım"],
-                       horizontal=True, label_visibility="collapsed")
-        if mod.startswith("📱"):
-            modeller = sorted(df["temel_model"].unique(), key=str.lower)
-            secili = st.selectbox("Telefon modeli (yazarak arayabilirsin)", modeller, index=None,
-                                  placeholder="Model yaz veya seç, ör. iPhone 13")
-            ram = hafiza = None
-            if secili:
-                varyantlar = df[df["temel_model"] == secili]
-                sabit = varyantlar.iloc[0]
-                ram_secenek = sorted(set(varyantlar["ram_capacity"]) | {4, 6, 8, 12, 16})
-                depo_secenek = sorted(set(varyantlar["internal_memory"]) | {64, 128, 256, 512, 1024})
-                c1, c2 = st.columns(2)
-                ram = c1.selectbox("RAM", ram_secenek, index=None, format_func=gb, placeholder="RAM seç")
-                hafiza = c2.selectbox("Depolama", depo_secenek, index=None, format_func=gb,
-                                      placeholder="Depolama seç")
-                batarya, islemci, sarj = sabit.battery_capacity, sabit.processor_speed, sabit.fast_charging
-                g5, ekran, yenileme = bool(sabit["5G_or_not"]), sabit.screen_size, sabit.refresh_rate
-                cozunurluk, kamera = sabit.resolution_height, sabit.primary_camera_rear
-                st.markdown(
-                    '<div class="bolum">📋 Bu modelin sabit özellikleri</div>'
-                    '<div class="ozellikler" style="margin-top:.3rem">'
-                    + "".join(f'<span class="ozellik" style="font-size:.85rem;padding:.25rem .6rem">{y}</span>'
-                              for y in [f"🔋 {batarya:.0f} mAh batarya", f"📷 {kamera:g} MP ana kamera",
-                                        f"🤳 {sabit.primary_camera_front:g} MP ön kamera",
-                                        f"⚙️ {islemci:g} GHz işlemci", f"⚡ {sarj_yazisi(sarj)}",
-                                        f"🖥️ {ekran:g}\" ekran", f"📐 {sabit.resolution_width}×{cozunurluk} piksel",
-                                        f"🔄 {yenileme} Hz", "📶 5G var" if g5 else "📶 5G yok"])
-                    + '</div>', unsafe_allow_html=True)
-                varyant_yazi = ", ".join(f"{gb(r)} RAM + {gb(d)}" for r, d in
-                                         zip(varyantlar["ram_capacity"], varyantlar["internal_memory"]))
-                st.caption(f"Veri setindeki varyantlar: {varyant_yazi}")
-                if ram is not None and hafiza is not None:
-                    eslesen = varyantlar[(varyantlar["ram_capacity"] == ram) & (varyantlar["internal_memory"] == hafiza)]
-                    if not eslesen.empty:
-                        gercek_fiyat = eslesen.iloc[0].price
-            hazir = secili is not None and ram is not None and hafiza is not None
+        modeller = sorted(df["temel_model"].unique(), key=str.lower)
+        secili = st.selectbox("📱 Telefon modeli (biliyorsan yaz, bilmiyorsan boş bırak)", modeller, index=None,
+                              placeholder="Model yaz veya seç, ör. iPhone 13")
+        varyantlar = df[df["temel_model"] == secili] if secili else df
+        ram_secenek = sorted(set(varyantlar["ram_capacity"]) | ({4, 6, 8, 12, 16} if secili else set()))
+        depo_secenek = sorted(set(varyantlar["internal_memory"]) | ({64, 128, 256, 512, 1024} if secili else set()))
+
+        st.markdown('<div class="bolum">⚙️ Özellikler</div>', unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        ram = c1.selectbox("RAM", ram_secenek, index=None, format_func=gb, placeholder="RAM seç / yaz")
+        hafiza = c2.selectbox("Depolama", depo_secenek, index=None, format_func=gb, placeholder="Depolama seç / yaz")
+
+        if secili:
+            # Model seçildi: sabit özellikler veri setinden gelir
+            sabit = varyantlar.iloc[0]
+            batarya, islemci, sarj = sabit.battery_capacity, sabit.processor_speed, sabit.fast_charging
+            g5, ekran, yenileme = bool(sabit["5G_or_not"]), sabit.screen_size, sabit.refresh_rate
+            cozunurluk, kamera = sabit.resolution_height, sabit.primary_camera_rear
+            st.markdown(
+                '<div class="bolum">📋 Bu modelin sabit özellikleri</div>'
+                '<div class="ozellikler" style="margin-top:.3rem">'
+                + "".join(f'<span class="ozellik" style="font-size:.85rem;padding:.25rem .6rem">{y}</span>'
+                          for y in [f"🔋 {batarya:.0f} mAh batarya", f"📷 {kamera:g} MP ana kamera",
+                                    f"🤳 {sabit.primary_camera_front:g} MP ön kamera",
+                                    f"⚙️ {islemci:g} GHz işlemci", f"⚡ {sarj_yazisi(sarj)}",
+                                    f"🖥️ {ekran:g}\" ekran", f"📐 {sabit.resolution_width}×{cozunurluk} piksel",
+                                    f"🔄 {yenileme} Hz", "📶 5G var" if g5 else "📶 5G yok"])
+                + '</div>', unsafe_allow_html=True)
+            varyant_yazi = ", ".join(f"{gb(r)} RAM + {gb(d)}" for r, d in
+                                     zip(varyantlar["ram_capacity"], varyantlar["internal_memory"]))
+            st.caption(f"Veri setindeki varyantlar: {varyant_yazi}")
+            if ram is not None and hafiza is not None:
+                eslesen = varyantlar[(varyantlar["ram_capacity"] == ram) & (varyantlar["internal_memory"] == hafiza)]
+                if not eslesen.empty:
+                    gercek_fiyat = eslesen.iloc[0].price
+            hazir = ram is not None and hafiza is not None
         else:
-            st.markdown('<div class="bolum">⚙️ Donanım</div>', unsafe_allow_html=True)
-            c1, c2 = st.columns(2)
-            ram = c1.number_input("RAM (GB)", 1, 24, None, 1, placeholder="ör. 8")
-            hafiza = c2.number_input("Depolama (GB)", 8, 2048, None, 64, placeholder="ör. 128")
+            # Model yok: kullanıcı aklındaki özellikleri yazar
             c3, c4 = st.columns(2)
-            islemci = c3.number_input("İşlemci hızı (GHz)", 1.0, 4.0, None, 0.1, format="%.1f", placeholder="ör. 2.4")
-            batarya = c4.number_input("Batarya (mAh)", 1000, 10000, None, 100, placeholder="ör. 5000")
-            c5, c6 = st.columns(2)
-            sarj = c5.number_input("Hızlı şarj (W, yoksa 0)", 0, 250, None, 1, placeholder="ör. 33")
-            g5_sec = c6.selectbox("5G", ["Var", "Yok"], index=None, placeholder="Seç")
-            st.markdown('<div class="bolum">🖥️ Ekran ve kamera</div>', unsafe_allow_html=True)
-            c7, c8 = st.columns(2)
-            ekran = c7.number_input("Ekran boyutu (inç)", 4.0, 8.0, None, 0.1, format="%.1f", placeholder="ör. 6.6")
-            yenileme = c8.number_input("Yenileme hızı (Hz)", 60, 240, None, 30, placeholder="ör. 120")
-            c9, c10 = st.columns(2)
-            cozunurluk = c9.number_input("Ekran yüksekliği (piksel)", 800, 4000, None, 10, placeholder="ör. 2400")
-            kamera = c10.number_input("Ana kamera (MP)", 2, 200, None, 1, placeholder="ör. 50")
+            batarya = c3.number_input("Batarya (mAh)", 1000, 10000, None, 100, placeholder="ör. 5000")
+            kamera = c4.number_input("Ana kamera (MP)", 2, 200, None, 1, placeholder="ör. 50")
+            with st.expander("Diğer özellikler (biliyorsan doldur, tahmin için gerekli)"):
+                c5, c6 = st.columns(2)
+                islemci = c5.number_input("İşlemci hızı (GHz)", 1.0, 4.0, None, 0.1, format="%.1f", placeholder="ör. 2.4")
+                sarj = c6.number_input("Hızlı şarj (W, yoksa 0)", 0, 250, None, 1, placeholder="ör. 33")
+                c7, c8 = st.columns(2)
+                ekran = c7.number_input("Ekran boyutu (inç)", 4.0, 8.0, None, 0.1, format="%.1f", placeholder="ör. 6.6")
+                yenileme = c8.number_input("Yenileme hızı (Hz)", 60, 240, None, 30, placeholder="ör. 120")
+                c9, c10 = st.columns(2)
+                cozunurluk = c9.number_input("Ekran yüksekliği (piksel)", 800, 4000, None, 10, placeholder="ör. 2400")
+                g5_sec = c10.selectbox("5G", ["Var", "Yok"], index=None, placeholder="Seç")
             g5 = g5_sec == "Var"
             hazir = None not in (ram, hafiza, islemci, batarya, sarj, g5_sec, ekran, yenileme, cozunurluk, kamera)
+            st.caption("Telefonunun adını hatırlamıyorsan aklındaki özellikleri yaz, uyan telefonlar sağda listelenir. "
+                       "Diğer özellikleri de doldurursan model fiyat segmentini de tahmin eder.")
 
-    if not hazir:
-        with sag:
-            st.markdown(
-                '<div class="sonuc" style="--renk:#a78bfa">'
-                '<div class="ust">Tahmin edilen segment</div>'
-                '<div class="ana">🔮 Henüz tahmin yok</div>'
-                '<div class="aralik" style="margin-top:.5rem">'
-                + ("Soldan telefon modelini seç, sonra RAM ve depolamayı seç. Sonuç burada görünecek."
-                   if mod.startswith("📱") else
-                   "Soldaki tüm özellikleri doldur, sonuç burada görünecek.")
-                + '</div></div>', unsafe_allow_html=True)
-
-    else:
-        girdi = pd.DataFrame([[ram, hafiza, batarya, islemci, yenileme, kamera, cozunurluk, ekran, int(g5), sarj]],
-                             columns=OZELLIKLER)
-        olas = model.predict_proba(girdi)[0]
-        sinif = int(olas.argmax())
-        ad, ikon, renk = SEGMENTLER[sinif]
-        cubuklar = "".join(
-            f'<div class="cubuk"><span class="ad">{SEGMENTLER[i][1]} {SEGMENTLER[i][0]}</span>'
-            f'<div class="iz"><div class="dolu" style="width:{p * 100:.1f}%;background:{SEGMENTLER[i][2]}"></div></div>'
-            f'<span class="yuzde">%{p * 100:.0f}</span></div>'
-            for i, p in enumerate(olas)
-        )
-        with sag:
+    with sag:
+        # 1) Tahmin (model seçilip RAM/depolama seçildiyse ya da tüm özellikler yazıldıysa)
+        if hazir:
+            girdi = pd.DataFrame([[ram, hafiza, batarya, islemci, yenileme, kamera, cozunurluk, ekran, int(g5), sarj]],
+                                 columns=OZELLIKLER)
+            olas = model.predict_proba(girdi)[0]
+            sinif = int(olas.argmax())
+            ad, ikon, renk = SEGMENTLER[sinif]
+            cubuklar = "".join(
+                f'<div class="cubuk"><span class="ad">{SEGMENTLER[i][1]} {SEGMENTLER[i][0]}</span>'
+                f'<div class="iz"><div class="dolu" style="width:{p * 100:.1f}%;background:{SEGMENTLER[i][2]}"></div></div>'
+                f'<span class="yuzde">%{p * 100:.0f}</span></div>'
+                for i, p in enumerate(olas))
+            gercek = ""
+            if gercek_fiyat is not None:
+                gercek_seg = int(pd.cut([gercek_fiyat], SINIRLAR, labels=False, include_lowest=True)[0])
+                gercek = (f'<div class="aralik" style="margin-top:.5rem">🏷️ Seçtiğin varyantın gerçek fiyatı: '
+                          f'<b>{tl(gercek_fiyat)}</b> (gerçek segmenti: {SEGMENTLER[gercek_seg][0]})</div>')
             st.markdown(
                 f'<div class="sonuc" style="--renk:{renk}">'
                 f'<div class="ust">Tahmin edilen segment</div>'
                 f'<div class="ana">{ikon} {ad}</div>'
                 f'<div class="guven">Model güveni: %{olas[sinif] * 100:.0f}</div>'
                 f'<div class="fiyat">{segment_araligi(sinif)}</div>'
-                f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>'
-                + (f'<div class="aralik" style="margin-top:.5rem">🏷️ Seçtiğin varyantın gerçek fiyatı: '
-                   f'<b>{tl(gercek_fiyat)}</b> (gerçek segmenti: {SEGMENTLER[int(pd.cut([gercek_fiyat], SINIRLAR, labels=False, include_lowest=True)[0])][0]})</div>'
-                   if gercek_fiyat is not None else "")
-                + f'<div style="margin-top:1rem">{cubuklar}</div></div>',
-                unsafe_allow_html=True)
+                f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>{gercek}'
+                f'<div style="margin-top:1rem">{cubuklar}</div></div>', unsafe_allow_html=True)
 
-            # Seçilen özelliklere en yakın gerçek telefonlar
-            fark = ((df["ram_capacity"] - ram).abs() / 2 + (df["internal_memory"] - hafiza).abs() / 64
-                    + (df["battery_capacity"] - batarya).abs() / 1000 + (df["processor_speed"] - islemci).abs() * 2
-                    + (df["refresh_rate"] - yenileme).abs() / 30 + (df["5G_or_not"] - int(g5)).abs())
-            benzer = df.assign(fark=fark).nsmallest(4, "fark")
-            st.markdown('<div class="bolum" style="margin-top:1.2rem">🔎 Bu özelliklere en yakın gerçek telefonlar</div>',
-                        unsafe_allow_html=True)
-            st.markdown("".join(
-                f'<div class="cubuk" style="grid-template-columns:1fr auto"><span class="ad">{r.isim} · '
-                f'{r.ram_capacity:g} GB / {r.internal_memory:g} GB</span><span class="yuzde">{tl(r.price)}</span></div>'
-                for r in benzer.itertuples()), unsafe_allow_html=True)
+        # 2) Model yazılmadıysa: girilen özelliklere uyan gerçek telefonlar
+        girilen = {k: v for k, v in {"ram_capacity": ram, "internal_memory": hafiza, "battery_capacity": batarya,
+                                     "primary_camera_rear": kamera}.items() if v is not None} if not secili else {}
+        if girilen:
+            uyan = df
+            if "ram_capacity" in girilen:
+                uyan = uyan[uyan["ram_capacity"] == ram]
+            if "internal_memory" in girilen:
+                uyan = uyan[uyan["internal_memory"] == hafiza]
+            if "battery_capacity" in girilen:  # yazılan bataryaya ±300 mAh yakın olanlar
+                uyan = uyan[(uyan["battery_capacity"] - batarya).abs() <= 300]
+            if "primary_camera_rear" in girilen:
+                uyan = uyan[uyan["primary_camera_rear"] == kamera]
+            if uyan.empty:
+                st.info("Bu özelliklerin hepsine uyan telefon bulunamadı. Bir özelliği silmeyi ya da değiştirmeyi dene.")
+            else:
+                if not hazir:
+                    dagilim = uyan["segment"].value_counts(normalize=True).reindex(range(4), fill_value=0)
+                    en_cok = int(dagilim.idxmax())
+                    ad, ikon, renk = SEGMENTLER[en_cok]
+                    cubuklar = "".join(
+                        f'<div class="cubuk"><span class="ad">{SEGMENTLER[i][1]} {SEGMENTLER[i][0]}</span>'
+                        f'<div class="iz"><div class="dolu" style="width:{p * 100:.1f}%;background:{SEGMENTLER[i][2]}"></div></div>'
+                        f'<span class="yuzde">%{p * 100:.0f}</span></div>' for i, p in dagilim.items())
+                    st.markdown(
+                        f'<div class="sonuc" style="--renk:{renk}">'
+                        f'<div class="ust">Bu özelliklerde {len(uyan)} telefon var</div>'
+                        f'<div class="ana">{ikon} Çoğu {ad.lower()}</div>'
+                        f'<div class="fiyat" style="font-size:1.6rem">{tl(uyan["price"].min())} – {tl(uyan["price"].max())}</div>'
+                        f'<div class="aralik">Bu telefonların gerçek fiyat aralığı</div>'
+                        f'<div style="margin-top:1rem">{cubuklar}</div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="bolum" style="margin-top:1.2rem">📱 Bu özelliklere uyan telefonlar '
+                            f'({len(uyan)})</div>', unsafe_allow_html=True)
+                gosterilecek = uyan.sort_values(["avg_rating", "price"], ascending=[False, True],
+                                                na_position="last").head(10)
+                st.markdown("".join(
+                    f'<div class="cubuk" style="grid-template-columns:1fr auto"><span class="ad">'
+                    f'{SEGMENTLER[r.segment][1]} {r.isim}</span><span class="yuzde">{tl(r.price)}</span></div>'
+                    for r in gosterilecek.itertuples()), unsafe_allow_html=True)
+                if len(uyan) > 10:
+                    st.caption("En beğenilen 10 tanesi gösteriliyor. Hepsini görmek için Telefon Kataloğu'ndaki filtreleri kullan.")
+
+        # 3) Hiçbir şey girilmediyse yönlendirme
+        if not hazir and not girilen:
+            st.markdown(
+                '<div class="sonuc" style="--renk:#a78bfa">'
+                '<div class="ust">Tahmin edilen segment</div>'
+                '<div class="ana">🔮 Henüz tahmin yok</div>'
+                '<div class="aralik" style="margin-top:.5rem">'
+                + ("Şimdi RAM ve depolamayı seç, tahmin burada görünecek." if secili else
+                   "Telefon modelini yaz ya da modeli hatırlamıyorsan RAM, depolama, batarya, kamera gibi "
+                   "özellikleri gir. Uyan telefonlar ve tahmin burada görünecek.")
+                + '</div></div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------
 # 2) Katalog
 # ------------------------------------------------------------
 SAYFA_BOYUTU = 24
-# Filtre aralıkları (alt, üst dahil)
-KAMERA_ARALIK = {"12 MP ve altı": (0, 12.9), "13 – 48 MP": (13, 48.9), "50 – 64 MP": (50, 64.9),
-                 "65 MP ve üzeri": (65, 1000)}
-BATARYA_ARALIK = {"4000 mAh altı": (0, 3999), "4000 – 4999 mAh": (4000, 4999), "5000 – 5999 mAh": (5000, 5999),
-                  "6000 mAh ve üzeri": (6000, 100000)}
 
 
 def kart_html(r):
