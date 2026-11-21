@@ -1,359 +1,300 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "97d185b5",
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "[BAŞARILI] Veri seti yüklendi. Satır/Sütun: (2000, 21)\n",
-      "\n",
-      "[INFO] Veri Setinden İlk 5 Satır:\n"
-     ]
-    },
-    {
-     "data": {
-      "text/html": [
-       "<div>\n",
-       "<style scoped>\n",
-       "    .dataframe tbody tr th:only-of-type {\n",
-       "        vertical-align: middle;\n",
-       "    }\n",
-       "\n",
-       "    .dataframe tbody tr th {\n",
-       "        vertical-align: top;\n",
-       "    }\n",
-       "\n",
-       "    .dataframe thead th {\n",
-       "        text-align: right;\n",
-       "    }\n",
-       "</style>\n",
-       "<table border=\"1\" class=\"dataframe\">\n",
-       "  <thead>\n",
-       "    <tr style=\"text-align: right;\">\n",
-       "      <th></th>\n",
-       "      <th>battery_power</th>\n",
-       "      <th>blue</th>\n",
-       "      <th>clock_speed</th>\n",
-       "      <th>dual_sim</th>\n",
-       "      <th>fc</th>\n",
-       "      <th>four_g</th>\n",
-       "      <th>int_memory</th>\n",
-       "      <th>m_dep</th>\n",
-       "      <th>mobile_wt</th>\n",
-       "      <th>n_cores</th>\n",
-       "      <th>...</th>\n",
-       "      <th>px_height</th>\n",
-       "      <th>px_width</th>\n",
-       "      <th>ram</th>\n",
-       "      <th>sc_h</th>\n",
-       "      <th>sc_w</th>\n",
-       "      <th>talk_time</th>\n",
-       "      <th>three_g</th>\n",
-       "      <th>touch_screen</th>\n",
-       "      <th>wifi</th>\n",
-       "      <th>price_range</th>\n",
-       "    </tr>\n",
-       "  </thead>\n",
-       "  <tbody>\n",
-       "    <tr>\n",
-       "      <th>0</th>\n",
-       "      <td>842</td>\n",
-       "      <td>0</td>\n",
-       "      <td>2.2</td>\n",
-       "      <td>0</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0</td>\n",
-       "      <td>7</td>\n",
-       "      <td>0.6</td>\n",
-       "      <td>188</td>\n",
-       "      <td>2</td>\n",
-       "      <td>...</td>\n",
-       "      <td>20</td>\n",
-       "      <td>756</td>\n",
-       "      <td>2549</td>\n",
-       "      <td>9</td>\n",
-       "      <td>7</td>\n",
-       "      <td>19</td>\n",
-       "      <td>0</td>\n",
-       "      <td>0</td>\n",
-       "      <td>1</td>\n",
-       "      <td>1</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>1</th>\n",
-       "      <td>1021</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0.5</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0</td>\n",
-       "      <td>1</td>\n",
-       "      <td>53</td>\n",
-       "      <td>0.7</td>\n",
-       "      <td>136</td>\n",
-       "      <td>3</td>\n",
-       "      <td>...</td>\n",
-       "      <td>905</td>\n",
-       "      <td>1988</td>\n",
-       "      <td>2631</td>\n",
-       "      <td>17</td>\n",
-       "      <td>3</td>\n",
-       "      <td>7</td>\n",
-       "      <td>1</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0</td>\n",
-       "      <td>2</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>2</th>\n",
-       "      <td>563</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0.5</td>\n",
-       "      <td>1</td>\n",
-       "      <td>2</td>\n",
-       "      <td>1</td>\n",
-       "      <td>41</td>\n",
-       "      <td>0.9</td>\n",
-       "      <td>145</td>\n",
-       "      <td>5</td>\n",
-       "      <td>...</td>\n",
-       "      <td>1263</td>\n",
-       "      <td>1716</td>\n",
-       "      <td>2603</td>\n",
-       "      <td>11</td>\n",
-       "      <td>2</td>\n",
-       "      <td>9</td>\n",
-       "      <td>1</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0</td>\n",
-       "      <td>2</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>3</th>\n",
-       "      <td>615</td>\n",
-       "      <td>1</td>\n",
-       "      <td>2.5</td>\n",
-       "      <td>0</td>\n",
-       "      <td>0</td>\n",
-       "      <td>0</td>\n",
-       "      <td>10</td>\n",
-       "      <td>0.8</td>\n",
-       "      <td>131</td>\n",
-       "      <td>6</td>\n",
-       "      <td>...</td>\n",
-       "      <td>1216</td>\n",
-       "      <td>1786</td>\n",
-       "      <td>2769</td>\n",
-       "      <td>16</td>\n",
-       "      <td>8</td>\n",
-       "      <td>11</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0</td>\n",
-       "      <td>0</td>\n",
-       "      <td>2</td>\n",
-       "    </tr>\n",
-       "    <tr>\n",
-       "      <th>4</th>\n",
-       "      <td>1821</td>\n",
-       "      <td>1</td>\n",
-       "      <td>1.2</td>\n",
-       "      <td>0</td>\n",
-       "      <td>13</td>\n",
-       "      <td>1</td>\n",
-       "      <td>44</td>\n",
-       "      <td>0.6</td>\n",
-       "      <td>141</td>\n",
-       "      <td>2</td>\n",
-       "      <td>...</td>\n",
-       "      <td>1208</td>\n",
-       "      <td>1212</td>\n",
-       "      <td>1411</td>\n",
-       "      <td>8</td>\n",
-       "      <td>2</td>\n",
-       "      <td>15</td>\n",
-       "      <td>1</td>\n",
-       "      <td>1</td>\n",
-       "      <td>0</td>\n",
-       "      <td>1</td>\n",
-       "    </tr>\n",
-       "  </tbody>\n",
-       "</table>\n",
-       "<p>5 rows × 21 columns</p>\n",
-       "</div>"
-      ],
-      "text/plain": [
-       "   battery_power  blue  clock_speed  dual_sim  fc  four_g  int_memory  m_dep  \\\n",
-       "0            842     0          2.2         0   1       0           7    0.6   \n",
-       "1           1021     1          0.5         1   0       1          53    0.7   \n",
-       "2            563     1          0.5         1   2       1          41    0.9   \n",
-       "3            615     1          2.5         0   0       0          10    0.8   \n",
-       "4           1821     1          1.2         0  13       1          44    0.6   \n",
-       "\n",
-       "   mobile_wt  n_cores  ...  px_height  px_width   ram  sc_h  sc_w  talk_time  \\\n",
-       "0        188        2  ...         20       756  2549     9     7         19   \n",
-       "1        136        3  ...        905      1988  2631    17     3          7   \n",
-       "2        145        5  ...       1263      1716  2603    11     2          9   \n",
-       "3        131        6  ...       1216      1786  2769    16     8         11   \n",
-       "4        141        2  ...       1208      1212  1411     8     2         15   \n",
-       "\n",
-       "   three_g  touch_screen  wifi  price_range  \n",
-       "0        0             0     1            1  \n",
-       "1        1             1     0            2  \n",
-       "2        1             1     0            2  \n",
-       "3        1             0     0            2  \n",
-       "4        1             1     0            1  \n",
-       "\n",
-       "[5 rows x 21 columns]"
-      ]
-     },
-     "metadata": {},
-     "output_type": "display_data"
-    },
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "\n",
-      "[INFO] Eğitim seti boyutu (X_train): (1600, 20)\n",
-      "[INFO] Test seti boyutu (X_test): (400, 20)\n",
-      "\n",
-      "[BAŞARILI] KNN ve Random Forest model şablonları hazırlandı.\n",
-      "\n",
-      "[BAŞARILI] KNN için veriler StandardScaler ile ölçeklendirildi.\n",
-      "[INFO] Random Forest için ise ham (ölçeklendirilmemiş) X_train ve X_test verileri kullanılmaya hazır.\n",
-      "--- 2. MODELLERİN EĞİTİLMESİ VE DEĞERLENDİRİLMESİ ---\n",
-      "\n",
-      "-> KNN Model Başarı Oranı (Accuracy): %53.00\n",
-      "-> Random Forest Model Başarı Oranı (Accuracy): %89.25\n",
-      "\n",
-      "--- KNN Sınıflandırma Raporu ---\n",
-      "              precision    recall  f1-score   support\n",
-      "\n",
-      "           0       0.70      0.72      0.71       105\n",
-      "           1       0.34      0.45      0.39        91\n",
-      "           2       0.35      0.37      0.36        92\n",
-      "           3       0.81      0.54      0.65       112\n",
-      "\n",
-      "    accuracy                           0.53       400\n",
-      "   macro avg       0.55      0.52      0.53       400\n",
-      "weighted avg       0.57      0.53      0.54       400\n",
-      "\n",
-      "\n",
-      "--- Random Forest Sınıflandırma Raporu ---\n",
-      "              precision    recall  f1-score   support\n",
-      "\n",
-      "           0       0.95      0.96      0.96       105\n",
-      "           1       0.89      0.87      0.88        91\n",
-      "           2       0.78      0.87      0.82        92\n",
-      "           3       0.94      0.87      0.90       112\n",
-      "\n",
-      "    accuracy                           0.89       400\n",
-      "   macro avg       0.89      0.89      0.89       400\n",
-      "weighted avg       0.90      0.89      0.89       400\n",
-      "\n"
-     ]
+# ============================================================
+# MOBİL CİHAZ FİYAT SEGMENTİ TAHMİNİ (KNN vs Random Forest)
+# ============================================================
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                             f1_score, classification_report, confusion_matrix)
+
+GRAFIK_KLASORU = Path("grafikler")
+GRAFIK_KLASORU.mkdir(exist_ok=True)
+
+def metrikler(y_true, y_pred):
+    return {
+        "Accuracy": accuracy_score(y_true, y_pred),
+        "Precision": precision_score(y_true, y_pred, average="weighted", zero_division=0),
+        "Recall": recall_score(y_true, y_pred, average="weighted", zero_division=0),
+        "F1-Score": f1_score(y_true, y_pred, average="weighted", zero_division=0),
     }
-   ],
-   "source": [
-    "# Veri setini yüklüyoruz (Dosya adını kendi klasörüne göre düzenleyebilirsin)\n",
-    "# Örnek: df = pd.read_csv('train.csv')\n",
-    "try:\n",
-    "    df = pd.read_csv('train.csv')\n",
-    "    print(\"[BAŞARILI] Veri seti yüklendi. Satır/Sütun:\", df.shape)\n",
-    "    \n",
-    "    # KONTROL İÇİN: İlk 5 satırı ekrana yazdıralım\n",
-    "    print(\"\\n[INFO] Veri Setinden İlk 5 Satır:\")\n",
-    "    display(df.head()) # Eğer Jupyter Notebook kullanıyorsan display() en şık görüntüyü verir. Düz terminal/script için print(df.head()) yapabilirsin.\n",
-    "\n",
-    "except FileNotFoundError:\n",
-    "    print(\"[HATA] 'train.csv' dosyası bulunamadı. Lütfen dosya yolunu kontrol et.\")\n",
-    "\n",
-    "# Hedef değişken (y) ve bağımsız değişkenler (X) ayrımı\n",
-    "# Not: Hedef sütun adı 'price_range' varsayılmıştır.\n",
-    "if 'df' in globals():\n",
-    "    X = df.drop('price_range', axis=1)\n",
-    "    y = df['price_range']\n",
-    "\n",
-    "    # Veriyi %80 Eğitim, %20 Test olarak bölme (Train-Test Split)\n",
-    "    X_train, X_test, y_train, y_test = train_test_split(\n",
-    "        X, y, test_size=0.20, random_state=42\n",
-    "    )\n",
-    "\n",
-    "    print(f\"\\n[INFO] Eğitim seti boyutu (X_train): {X_train.shape}\")\n",
-    "    print(f\"[INFO] Test seti boyutu (X_test): {X_test.shape}\")\n",
-    "\n",
-    "    # KNN ve Random Forest modelleri için boş şablonlar\n",
-    "    knn_model = KNeighborsClassifier()\n",
-    "    rf_model = RandomForestClassifier(random_state=42)\n",
-    "\n",
-    "    print(\"\\n[BAŞARILI] KNN ve Random Forest model şablonları hazırlandı.\")\n",
-    "    from sklearn.preprocessing import StandardScaler\n",
-    "\n",
-    "# KNN için verileri ölçeklendirme (StandardScaler)\n",
-    "scaler = StandardScaler()\n",
-    "\n",
-    "# Eğitim verisini ölçeklendiriyoruz\n",
-    "X_train_scaled = scaler.fit_transform(X_train)\n",
-    "\n",
-    "# Test verisini aynı ölçekleyici ile dönüştürüyoruz (Veri sızıntısını önlemek için fit_transform DEĞİL, sadece transform)\n",
-    "X_test_scaled = scaler.transform(X_test)\n",
-    "\n",
-    "print(\"\\n[BAŞARILI] KNN için veriler StandardScaler ile ölçeklendirildi.\")\n",
-    "print(\"[INFO] Random Forest için ise ham (ölçeklendirilmemiş) X_train ve X_test verileri kullanılmaya hazır.\")  \n",
-    "from sklearn.metrics import accuracy_score, classification_report\n",
-    "\n",
-    "print(\"--- 2. MODELLERİN EĞİTİLMESİ VE DEĞERLENDİRİLMESİ ---\\n\"\n",
-    ")\n",
-    "\n",
-    "# 1. KNN Modeli Eğitimi (Ölçeklendirilmiş verilerle)\n",
-    "# Not: Daha önce hazırladığımız X_train_scaled ve X_test_scaled kullanılıyor.\n",
-    "knn_model.fit(X_train_scaled, y_train)\n",
-    "y_pred_knn = knn_model.predict(X_test_scaled)\n",
-    "accuracy_knn = accuracy_score(y_test, y_pred_knn)\n",
-    "\n",
-    "print(f\"-> KNN Model Başarı Oranı (Accuracy): %{accuracy_knn * 100:.2f}\")\n",
-    "\n",
-    "\n",
-    "# 2. Random Forest Modeli Eğitimi (Ham/Ölçeklendirilmemiş verilerle)\n",
-    "rf_model.fit(X_train, y_train)\n",
-    "y_pred_rf = rf_model.predict(X_test)\n",
-    "accuracy_rf = accuracy_score(y_test, y_pred_rf)\n",
-    "\n",
-    "print(f\"-> Random Forest Model Başarı Oranı (Accuracy): %{accuracy_rf * 100:.2f}\")\n",
-    "\n",
-    "\n",
-    "# Detaylı Sınıflandırma Raporu (İsteğe bağlı inceleme için)\n",
-    "print(\"\\n--- KNN Sınıflandırma Raporu ---\")\n",
-    "print(classification_report(y_test, y_pred_knn))\n",
-    "\n",
-    "print(\"\\n--- Random Forest Sınıflandırma Raporu ---\")\n",
-    "print(classification_report(y_test, y_pred_rf))\n"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "l (3.15.2)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.15.2"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
+
+# ------------------------------------------------------------
+print("--- 1. Veri Okuma ---")
+try:
+    taban = Path(__file__).resolve().parent
+except NameError:
+    taban = Path.cwd()
+df = pd.read_csv(taban / "train.csv")
+print("Satır/Sütun:", df.shape)
+print(df.head().to_string())
+
+# ------------------------------------------------------------
+print("\n--- 2. Veri İnceleme (EDA) ---")
+df.info()
+print("\nEksik değer toplamı:", df.isnull().sum().sum())
+print("Tekrarlı satır sayısı:", df.duplicated().sum())
+print("\nFiyat segmenti dağılımı:")
+print(df["price_range"].value_counts().sort_index())
+print("\nTemel istatistikler:")
+print(df.describe().T.round(2).to_string())
+
+plt.figure(figsize=(6, 4))
+sns.countplot(x="price_range", data=df)
+plt.title("Fiyat Segmenti Dağılımı")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "sinif_dagilimi.png", dpi=150)
+plt.show()
+
+plt.figure(figsize=(14, 11))
+sns.heatmap(df.corr(), cmap="coolwarm", center=0, annot=True, fmt=".2f", annot_kws={"size": 7})
+plt.title("Korelasyon Matrisi")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "korelasyon.png", dpi=150)
+plt.show()
+
+print("\nprice_range ile en yüksek korelasyonlar:")
+print(df.corr()["price_range"].drop("price_range").sort_values(ascending=False).head(5).round(3))
+
+# ------------------------------------------------------------
+print("\n--- 3. Eğitim/Test Ayrımı (%80 / %20) ---")
+X = df.drop("price_range", axis=1)
+y = df["price_range"]
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.20, random_state=42, stratify=y)
+print("X_train:", X_train.shape, "| X_test:", X_test.shape)
+
+# ------------------------------------------------------------
+print("\n--- 4. Ölçeklendirmenin KNN'e Etkisi (H3) ---")
+olcek_sonuclari = {}
+for ad, olcekleyici in [("Ölçeklendirmesiz", None),
+                        ("StandardScaler", StandardScaler()),
+                        ("MinMaxScaler", MinMaxScaler())]:
+    if olcekleyici is None:
+        Xtr, Xte = X_train, X_test
+    else:
+        Xtr = olcekleyici.fit_transform(X_train)   # sadece eğitime fit
+        Xte = olcekleyici.transform(X_test)
+    tahmin = KNeighborsClassifier().fit(Xtr, y_train).predict(Xte)
+    olcek_sonuclari[ad] = metrikler(y_test, tahmin)
+olcek_df = pd.DataFrame(olcek_sonuclari).T.round(4)
+print(olcek_df.to_string())
+
+# En iyi ölçekleyici ile devam
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ------------------------------------------------------------
+print("\n--- 5. KNN Hiperparametre Denemeleri ---")
+best_k, best_knn_f1 = None, -1.0
+for k in range(1, 31, 2):
+    preds = KNeighborsClassifier(n_neighbors=k).fit(X_train_scaled, y_train).predict(X_test_scaled)
+    m = metrikler(y_test, preds)
+    print(f"k={k:2d} -> Accuracy: %{m['Accuracy'] * 100:.2f} | F1-Score: {m['F1-Score']:.4f}")
+    if m["F1-Score"] > best_knn_f1:
+        best_knn_f1, best_k = m["F1-Score"], k
+
+knn_model = KNeighborsClassifier(n_neighbors=best_k).fit(X_train_scaled, y_train)
+y_pred_knn = knn_model.predict(X_test_scaled)
+print(f"\n[SEÇİLEN KNN] En iyi n_neighbors = {best_k}")
+
+# ------------------------------------------------------------
+print("\n--- 6. Random Forest Hiperparametre Optimizasyonu (GridSearchCV) ---")
+param_grid = {
+    "n_estimators": [100, 200, 300],
+    "max_depth": [None, 10, 20],
+    "min_samples_split": [2, 5],
 }
+grid = GridSearchCV(RandomForestClassifier(random_state=42), param_grid,
+                    cv=5, scoring="f1_weighted", n_jobs=-1)
+grid.fit(X_train, y_train)
+rf_model = grid.best_estimator_
+y_pred_rf = rf_model.predict(X_test)
+print("En iyi parametreler:", grid.best_params_)
+
+# ------------------------------------------------------------
+print("\n--- 6.5. Ek Karşılaştırma: XGBoost ve LightGBM ---")
+# Kurulum: pip install xgboost lightgbm
+ek_modeller = {}
+try:
+    from xgboost import XGBClassifier
+    xgb_model = XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.1,
+                              random_state=42, eval_metric="mlogloss")
+    xgb_model.fit(X_train, y_train)
+    ek_modeller["XGBoost"] = xgb_model.predict(X_test)
+    print("[BAŞARILI] XGBoost eğitildi.")
+except ImportError:
+    print("[ATLANDI] xgboost kurulu değil: pip install xgboost")
+try:
+    from lightgbm import LGBMClassifier
+    lgbm_model = LGBMClassifier(n_estimators=300, learning_rate=0.05,
+                                random_state=42, verbose=-1)
+    lgbm_model.fit(X_train, y_train)
+    ek_modeller["LightGBM"] = lgbm_model.predict(X_test)
+    print("[BAŞARILI] LightGBM eğitildi.")
+except ImportError:
+    print("[ATLANDI] lightgbm kurulu değil: pip install lightgbm")
+
+# ------------------------------------------------------------
+print("\n--- 7. Model Karşılaştırması (Rapor Tablosu) ---")
+tum_modeller = {f"KNN (k={best_k})": y_pred_knn, "Random Forest": y_pred_rf, **ek_modeller}
+sonuc_df = pd.DataFrame({ad: metrikler(y_test, p) for ad, p in tum_modeller.items()}).T.round(4)
+print(sonuc_df.to_string())
+sonuc_df.to_csv("sonuclar.csv")
+
+print("\n--- KNN Sınıflandırma Raporu ---")
+print(classification_report(y_test, y_pred_knn))
+print("--- Random Forest Sınıflandırma Raporu ---")
+print(classification_report(y_test, y_pred_rf))
+
+# ------------------------------------------------------------
+print("\n--- 8. Confusion Matrix ---")
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+for ax, baslik, y_pred in zip(axes, [f"KNN (k={best_k})", "Random Forest"], [y_pred_knn, y_pred_rf]):
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", cmap="Blues", ax=ax)
+    ax.set_title(f"{baslik} - Confusion Matrix")
+    ax.set_xlabel("Tahmin Edilen Sınıf")
+    ax.set_ylabel("Gerçek Sınıf")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "confusion_matrix.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 9. Feature Importance (Random Forest) ---")
+onem = pd.Series(rf_model.feature_importances_, index=X.columns).sort_values(ascending=False)
+print(onem.round(4).to_string())
+
+plt.figure(figsize=(8, 6))
+sns.barplot(x=onem.values, y=onem.index)
+plt.title("Random Forest - Özellik Önemi")
+plt.xlabel("Önem Skoru")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "feature_importance.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 10. Hipotez Özeti ---")
+knn_f1 = sonuc_df.iloc[0]["F1-Score"]
+rf_f1 = sonuc_df.loc["Random Forest", "F1-Score"]
+print(f"H1: En iyi F1 = {max(knn_f1, rf_f1):.4f} -> sınıflandırma "
+      f"{'başarılı, H1 kabul' if max(knn_f1, rf_f1) > 0.7 else 'zayıf, H1 ret'}")
+print(f"H2: KNN F1 = {knn_f1:.4f}, RF F1 = {rf_f1:.4f}, fark = {abs(knn_f1 - rf_f1):.4f}")
+print(f"H3: Ölçeklendirmesiz F1 = {olcek_df.loc['Ölçeklendirmesiz', 'F1-Score']:.4f}, "
+      f"StandardScaler F1 = {olcek_df.loc['StandardScaler', 'F1-Score']:.4f}")
+print("H4: En önemli 5 özellik:", ", ".join(onem.index[:5]))
+print("\nGrafikler 'grafikler' klasörüne, sonuç tablosu 'sonuclar.csv' dosyasına kaydedildi.")
+
+# ============================================================
+# EK ANALİZLER
+# ============================================================
+import time
+import joblib
+from sklearn.model_selection import cross_val_score, learning_curve
+from sklearn.pipeline import make_pipeline
+
+# ------------------------------------------------------------
+print("\n--- 11. KNN için CV ile k Seçimi (GridSearchCV) ---")
+knn_pipe = make_pipeline(StandardScaler(), KNeighborsClassifier())
+knn_grid = GridSearchCV(knn_pipe, {"kneighborsclassifier__n_neighbors": list(range(1, 31, 2))},
+                        cv=5, scoring="f1_weighted", n_jobs=-1)
+knn_grid.fit(X_train, y_train)
+print("CV ile en iyi k:", knn_grid.best_params_["kneighborsclassifier__n_neighbors"],
+      f"| CV F1: {knn_grid.best_score_:.4f}")
+
+k_listesi = list(range(1, 31, 2))
+k_skorlari = knn_grid.cv_results_["mean_test_score"]
+plt.figure(figsize=(7, 4))
+plt.plot(k_listesi, k_skorlari, marker="o")
+plt.title("KNN: k Değerine Göre CV F1-Score")
+plt.xlabel("k (n_neighbors)")
+plt.ylabel("F1-Score")
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "knn_k_grafigi.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 12. 5-Fold Cross-Validation Karşılaştırması ---")
+cv_modelleri = {"KNN": knn_grid.best_estimator_, "Random Forest": rf_model}
+if "XGBoost" in ek_modeller:
+    cv_modelleri["XGBoost"] = xgb_model
+if "LightGBM" in ek_modeller:
+    cv_modelleri["LightGBM"] = lgbm_model
+cv_sonuc = {}
+for ad, model in cv_modelleri.items():
+    skorlar = cross_val_score(model, X, y, cv=5, scoring="accuracy", n_jobs=-1)
+    cv_sonuc[ad] = {"CV Ortalama": skorlar.mean(), "CV Std": skorlar.std()}
+    print(f"{ad:14s} -> %{skorlar.mean() * 100:.2f} (± {skorlar.std() * 100:.2f})")
+pd.DataFrame(cv_sonuc).T.round(4).to_csv("cv_sonuclari.csv")
+
+# ------------------------------------------------------------
+print("\n--- 13. Eğitim ve Test Skoru (Overfitting Kontrolü) ---")
+for ad, model, Xtr, Xte in [("KNN", knn_model, X_train_scaled, X_test_scaled),
+                            ("Random Forest", rf_model, X_train, X_test)]:
+    tr = accuracy_score(y_train, model.predict(Xtr))
+    te = accuracy_score(y_test, model.predict(Xte))
+    print(f"{ad:14s} | Eğitim: %{tr * 100:.2f} | Test: %{te * 100:.2f} | Fark: %{(tr - te) * 100:.2f}")
+
+# ------------------------------------------------------------
+print("\n--- 14. Öğrenme Eğrisi (Random Forest) ---")
+boyutlar, tr_sk, te_sk = learning_curve(rf_model, X, y, cv=5, n_jobs=-1,
+                                        train_sizes=np.linspace(0.1, 1.0, 6))
+plt.figure(figsize=(7, 4))
+plt.plot(boyutlar, tr_sk.mean(axis=1), marker="o", label="Eğitim")
+plt.plot(boyutlar, te_sk.mean(axis=1), marker="o", label="Doğrulama (CV)")
+plt.title("Random Forest Öğrenme Eğrisi")
+plt.xlabel("Eğitim Örneği Sayısı")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "ogrenme_egrisi.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 15. En Önemli 5 Özellikle Model (H4 Testi) ---")
+ilk5 = list(onem.index[:5])
+rf5 = RandomForestClassifier(**grid.best_params_, random_state=42).fit(X_train[ilk5], y_train)
+acc5 = accuracy_score(y_test, rf5.predict(X_test[ilk5]))
+print("Kullanılan özellikler:", ", ".join(ilk5))
+print(f"Tüm özellikler: %{accuracy_score(y_test, y_pred_rf) * 100:.2f} | İlk 5 özellik: %{acc5 * 100:.2f}")
+
+# ------------------------------------------------------------
+print("\n--- 16. Önemli Özelliklerin Fiyat Segmentine Göre Dağılımı ---")
+fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+for ax, sutun in zip(axes, onem.index[:4]):
+    sns.boxplot(x="price_range", y=sutun, data=df, ax=ax)
+    ax.set_title(f"{sutun} - Fiyat Segmenti")
+plt.tight_layout()
+plt.savefig(GRAFIK_KLASORU / "boxplot_onemli_ozellikler.png", dpi=150)
+plt.show()
+
+# ------------------------------------------------------------
+print("\n--- 17. Hata Analizi ---")
+hatalar = pd.DataFrame({"Gerçek": y_test, "Tahmin": y_pred_rf})
+hatalar = hatalar[hatalar["Gerçek"] != hatalar["Tahmin"]]
+print(f"Random Forest toplam hatalı tahmin: {len(hatalar)} / {len(y_test)}")
+print("En sık karışan sınıf çiftleri:")
+print(hatalar.value_counts().head(5).to_string())
+
+# ------------------------------------------------------------
+print("\n--- 18. Eğitim Süresi Karşılaştırması ---")
+for ad, model, Xtr in [("KNN", KNeighborsClassifier(n_neighbors=best_k), X_train_scaled),
+                       ("Random Forest", RandomForestClassifier(**grid.best_params_, random_state=42), X_train)]:
+    t0 = time.perf_counter()
+    model.fit(Xtr, y_train)
+    print(f"{ad:14s} -> {time.perf_counter() - t0:.3f} saniye")
+
+# ------------------------------------------------------------
+print("\n--- 19. En İyi Modeli Kaydetme ---")
+joblib.dump(rf_model, "en_iyi_model_rf.pkl")
+joblib.dump(scaler, "scaler.pkl")
+print("[BAŞARILI] en_iyi_model_rf.pkl ve scaler.pkl kaydedildi.")
+
+
