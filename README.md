@@ -119,26 +119,36 @@ Sistemi dışarıdan kullanan **aktörleri** (veri analisti, araştırmacı, son
 
 ---
 
-## 📂 Klasör Yapısı
-
-```
 Mobile-Price-Range/
-├── train.csv                    # Veri seti
-├── mobil_fiyat_projesi.py       # Tüm analiz ve modelleme kodu
-├── README.md
-├── sonuclar.csv                 # Model karşılaştırma tablosu (kod çalışınca oluşur)
-├── cv_sonuclari.csv             # Cross-validation sonuçları (kod çalışınca oluşur)
-├── en_iyi_model_rf.pkl          # Kaydedilen Random Forest modeli
-├── scaler.pkl                   # Kaydedilen StandardScaler
-└── grafikler/                   # Tüm grafikler (PNG)
-    ├── sinif_dagilimi.png
-    ├── korelasyon.png
-    ├── confusion_matrix.png
-    ├── feature_importance.png
-    ├── knn_k_grafigi.png
-    ├── ogrenme_egrisi.png
-    └── boxplot_onemli_ozellikler.png
-```
+├── README.md                              # Proje tanıtımı ve sonuçlar
+│
+├── 📚 Araştırma ve Dokümantasyon
+│   ├── Literatur_Arastirmasi.md           # Benzer çalışmalar ve literatür taraması
+│   └── Proje İçin Kullanılan Veri Seti Örneği   # Veri setinden örnek kayıtlar
+│
+├── 🧹 Veri Analizi ve Ön İşleme
+│   ├── veri_inceleme_eda_hazir.ipynb      # Keşifçi veri analizi (EDA) notebook'u
+│   ├── Veri_On_Isleme.md                  # Ön işleme adımlarının açıklaması
+│   └── Veri_seti_hata_ayıklama_raporu.md  # Veri kalitesi / hata ayıklama raporu
+│
+├── 🤖 Modelleme
+│   ├── proje.ipynb                        # KNN, Random Forest, XGBoost, LightGBM kodu
+│   ├── en_iyi_model_rf.pkl                # Kaydedilen Random Forest modeli
+│   └── scaler.pkl                         # Kaydedilen StandardScaler
+│
+├── 📈 Sonuçlar
+│   ├── sonuclar.csv                       # Test seti model karşılaştırma tablosu
+│   ├── cv_sonuclari.csv                   # 5-fold cross-validation sonuçları
+│   └── grafikler/                         # Tüm grafikler (PNG)
+│       ├── sinif_dagilimi.png
+│       ├── korelasyon.png
+│       ├── boxplot_onemli_ozellikler.png
+│       ├── confusion_matrix.png
+│       ├── feature_importance.png
+│       ├── knn_k_grafigi.png
+│       └── ogrenme_egrisi.png
+│
+└── train.csv                              # Veri seti (Kaggle'dan indirilmelidir)
 
 ---
 
