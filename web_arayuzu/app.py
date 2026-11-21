@@ -243,6 +243,34 @@ BATARYA_ARALIK = {"4000 mAh altı": (0, 3999), "4000 – 4999 mAh": (4000, 4999)
                   "6000 mAh ve üzeri": (6000, 100000)}
 
 
+def grup_secenekleri(sutun, gruplar, yaz, ondalik=0):
+    # Her aralık için veri setindeki telefonların ortalamasını alır; seçenek etiketi -> modele verilecek değer
+    secenek = {}
+    for etiket, (alt, ust) in gruplar.items():
+        degerler = df.loc[(df[sutun] >= alt) & (df[sutun] < ust), sutun]
+        if not degerler.empty:
+            ort = round(float(degerler.mean()), ondalik)
+            secenek[f"{etiket} (ort. {yaz(ort)})"] = ort
+    return secenek
+
+
+EKRAN_SECENEK = grup_secenekleri("screen_size", {
+    "Küçük, 6.0 inç altı": (0, 6.0), "Orta, 6.0 – 6.4 inç": (6.0, 6.45), "Büyük, 6.5 – 6.6 inç": (6.45, 6.65),
+    "Çok büyük, 6.7 – 6.9 inç": (6.65, 7.0), "Katlanabilir / tablet, 7 inç ve üzeri": (7.0, 99)},
+    lambda x: f"{x:g}\"", 2)
+ISLEMCI_SECENEK = grup_secenekleri("processor_speed", {
+    "Giriş seviyesi, 2.0 GHz altı": (0, 2.0), "Orta, 2.0 – 2.4 GHz": (2.0, 2.5),
+    "Güçlü, 2.5 – 2.9 GHz": (2.5, 3.0), "Amiral gemisi, 3.0 GHz ve üzeri": (3.0, 99)},
+    lambda x: f"{x:g} GHz", 2)
+SARJ_SECENEK = {"Hızlı şarj yok": 0.0} | grup_secenekleri("fast_charging", {
+    "Yavaş, 10 – 18 W": (1, 19), "Normal, 20 – 33 W": (19, 34), "Hızlı, 40 – 68 W": (34, 70),
+    "Çok hızlı, 80 W ve üzeri": (70, 1000)}, lambda x: f"{x:.0f} W")
+COZUNURLUK_SECENEK = grup_secenekleri("resolution_height", {
+    "HD (düşük)": (0, 1000), "HD+": (1000, 2000), "Full HD+": (2000, 2900), "2K / QHD+ (en net)": (2900, 99999)},
+    lambda x: f"{x:.0f} piksel")
+YENILEME_SECENEK = sorted(df["refresh_rate"].unique())
+
+
 def gb_yaz(x):
     return f"{x / 1024:g} TB" if x >= 1024 else f"{x:g} GB"
 
@@ -356,16 +384,22 @@ with sekme_tahmin:
             c3, c4 = st.columns(2)
             batarya = c3.number_input("Batarya (mAh)", 1000, 10000, None, 100, placeholder="ör. 5000")
             kamera = c4.number_input("Ana kamera (MP)", 2, 200, None, 1, placeholder="ör. 50")
-            with st.expander("Diğer özellikler (biliyorsan doldur, tahmin için gerekli)"):
+            with st.expander("Diğer özellikler (biliyorsan seç, tahmin için gerekli)"):
                 c5, c6 = st.columns(2)
-                islemci = c5.number_input("İşlemci hızı (GHz)", 1.0, 4.0, None, 0.1, format="%.1f", placeholder="ör. 2.4")
-                sarj = c6.number_input("Hızlı şarj (W, yoksa 0)", 0, 250, None, 1, placeholder="ör. 33")
+                islemci_sec = c5.selectbox("İşlemci", list(ISLEMCI_SECENEK), index=None, placeholder="Seç")
+                sarj_sec = c6.selectbox("Hızlı şarj", list(SARJ_SECENEK), index=None, placeholder="Seç")
                 c7, c8 = st.columns(2)
-                ekran = c7.number_input("Ekran boyutu (inç)", 4.0, 8.0, None, 0.1, format="%.1f", placeholder="ör. 6.6")
-                yenileme = c8.number_input("Yenileme hızı (Hz)", 60, 240, None, 30, placeholder="ör. 120")
+                ekran_sec = c7.selectbox("Ekran boyutu", list(EKRAN_SECENEK), index=None, placeholder="Seç")
+                yenileme = c8.selectbox("Yenileme hızı", YENILEME_SECENEK, index=None, format_func=lambda x: f"{x} Hz",
+                                        placeholder="Seç")
                 c9, c10 = st.columns(2)
-                cozunurluk = c9.number_input("Ekran yüksekliği (piksel)", 800, 4000, None, 10, placeholder="ör. 2400")
+                cozunurluk_sec = c9.selectbox("Ekran çözünürlüğü", list(COZUNURLUK_SECENEK), index=None, placeholder="Seç")
                 g5_sec = c10.selectbox("5G", ["Var", "Yok"], index=None, placeholder="Seç")
+                st.caption("Seçeneklerdeki değerler, veri setinde o gruba giren telefonların ortalamasıdır.")
+            islemci = ISLEMCI_SECENEK.get(islemci_sec)
+            sarj = SARJ_SECENEK.get(sarj_sec)
+            ekran = EKRAN_SECENEK.get(ekran_sec)
+            cozunurluk = COZUNURLUK_SECENEK.get(cozunurluk_sec)
             g5 = g5_sec == "Var"
             hazir = None not in (ram, hafiza, islemci, batarya, sarj, g5_sec, ekran, yenileme, cozunurluk, kamera)
             st.caption("Telefonunun adını hatırlamıyorsan aklındaki özellikleri yaz, uyan telefonlar sağda listelenir. "
