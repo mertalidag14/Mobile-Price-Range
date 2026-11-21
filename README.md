@@ -49,7 +49,7 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 
 | Bilgi | Değer |
 | :--- | :--- |
-| **Kaynak** | Kaggle – *Real World Smartphone's Dataset* (Smartprix verisi), kullanılan kopya: [Hugging Face](https://huggingface.co/datasets/jason1966/abhijitdahatonde_real-world-smartphones-dataset) |
+| **Kaynak** | [Kaggle – *Real World Smartphone's Dataset*](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) (Smartprix verisi), kullanılan kopya: [Hugging Face](https://huggingface.co/datasets/jason1966/abhijitdahatonde_real-world-smartphones-dataset) |
 | **Dosya** | `gercek_telefonlar.csv` |
 | **Satır / Sütun** | 980 gerçek telefon, 22 sütun (marka, model, fiyat ve donanım özellikleri) |
 | **Fiyat** | Gerçek satış fiyatı, Hindistan Rupisi (₹) |
@@ -239,7 +239,7 @@ Mobile-Price-Range/
 ### 📱 `v2_gercek_telefon_analizi/` – Gerçek Telefon Verisiyle Analiz
 | Dosya | Açıklama |
 | :--- | :--- |
-| `gercek_telefonlar.csv` | 980 gerçek akıllı telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: Kaggle – Real World Smartphone's Dataset |
+| `gercek_telefonlar.csv` | 980 gerçek akıllı telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
 | `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (20 bölüm) |
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python sürümü |
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
