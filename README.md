@@ -129,11 +129,16 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 
 Projede yazılımın yapısal tasarımını standartlaştırmak, veri işleme adımlarının mantıksal akışını netleştirmek ve kullanıcı etkileşimlerini modellemek amacıyla üç temel UML diyagramından yararlanılmıştır. Diyagramlar, projeye eklenen **gerçek telefon veri seti (v2)** ve **TeknoTahmin web sitesi** ile birlikte güncellenmiştir. Projenin ilk hâline ait diyagramlar en altta bağlantı olarak duruyor.
 
+**Diyagramları hazırlayan ekip:** Mert Ali Dağ · Gürkan Tural · Efe Erdem
+
 ### 1. Sınıf Diyagramı (Class Diagram)
 
 Sistemin **statik (değişmeyen) yapısal iskeletini** ortaya koyar. Veri yükleme, ön işleme, model eğitimi, değerlendirme ve web arayüzü sınıflarını; bu sınıfların nitelik ve operasyonlarını ve aralarındaki ilişkileri gösterir.
 
 ```mermaid
+---
+title: "TeknoTahmin – Sınıf Diyagramı (Class Diagram)"
+---
 classDiagram
     direction LR
     class VeriYukleyici {
@@ -233,6 +238,9 @@ classDiagram
 Sistemin uçtan uca **dinamik iş akışını** adım adım görselleştirir: veri setinin seçilmesi ve temizlenmesinden model eğitimine, değerlendirmeye ve modelin web sitesi olarak yayınlanmasına kadar.
 
 ```mermaid
+---
+title: "TeknoTahmin – Aktivite Diyagramı (Activity Diagram)"
+---
 flowchart TD
     A([Başla]) --> B{Hangi veri seti?}
     B -- "v1: Kaggle sentetik, 2000 satır" --> C[train.csv oku]
@@ -274,6 +282,9 @@ flowchart TD
 Sistemi dışarıdan kullanan **aktörleri** ve bu aktörlerin sistem üzerinde gerçekleştirebileceği **temel işlevleri** tanımlar.
 
 ```mermaid
+---
+title: "TeknoTahmin – Kullanım Senaryosu Diyagramı (Use Case Diagram)"
+---
 flowchart LR
     kullanici["👤 Son Kullanıcı"]
     analist["👤 Veri Analisti / Araştırmacı"]
