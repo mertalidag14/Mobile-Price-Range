@@ -396,16 +396,24 @@ Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir St
 ### 📸 Ekran Görüntüleri
 
 **🔮 Fiyat Tahmini:** Telefon adı yazılıp model seçilince fiyat segmenti, model güveni ve varyantın gerçek fiyatı
-🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd/view?usp=sharing)
+
+![TeknoTahmin – Fiyat Tahmini](https://drive.google.com/thumbnail?id=1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd&sz=w1600)
+
 
 **🛒 Telefon Kataloğu:** 970 gerçek telefon, TL fiyatlar, marka logoları ve filtreler
-🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1H00gzaTHNpeT5uFYHsX7p5rbm8FpNWHf/view?usp=sharing)
+
+![TeknoTahmin – Telefon Kataloğu](https://drive.google.com/thumbnail?id=1H00gzaTHNpeT5uFYHsX7p5rbm8FpNWHf&sz=w1600)
+
 
 **⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması
-🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1JCYjiNZqY0HPMuGOkD4iVuRtXl5neb3V/view?usp=sharing)
+
+![TeknoTahmin – Karşılaştır](https://drive.google.com/thumbnail?id=1JCYjiNZqY0HPMuGOkD4iVuRtXl5neb3V&sz=w1600)
+
 
 **📊 Proje Hakkında:** Veri seti, segmentler ve model sonuçlarının özeti
-🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/129iSuU-p2AsIGvmo2wR4eBQivA3mjSKx/view?usp=sharing)
+
+![TeknoTahmin – Proje Hakkında](https://drive.google.com/thumbnail?id=129iSuU-p2AsIGvmo2wR4eBQivA3mjSKx&sz=w1600)
+
 
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatlarıdır. Sitede 1 ₹ ≈ 0,54 TL
 > kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevrilerek gösterilir. Marka adları ve logoları
