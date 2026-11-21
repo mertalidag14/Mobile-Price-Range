@@ -100,7 +100,7 @@ Projede iki veri seti kullanıldı. İlk analiz sentetik Kaggle veri setiyle yap
 - **Dockerfile & TOML:** Sitenin sunucuda nasıl kurulacağı `Dockerfile` ile, koyu tema ayarları `.streamlit/config.toml` ile tanımlanmıştır.
 
 ### 🌐 Web Sitesi ve Yayınlama Teknolojileri
-- **Streamlit:** Python koduyla web arayüzü oluşturmak için kullanılan çatı. Kaydırıcılar, filtreler, sekmeler ve sayfalama Streamlit bileşenleriyle yapılmıştır.
+- **Streamlit:** Python koduyla web arayüzü oluşturmak için kullanılan çatı. Açılır seçim kutuları, arama kutusu, filtreler, sekmeler ve sayfalama Streamlit bileşenleriyle yapılmıştır.
 - **Docker:** Sitenin her ortamda aynı şekilde çalışması için uygulama `python:3.13-slim` tabanlı bir konteynere paketlenmiştir.
 - **Render:** Docker konteyneri ücretsiz planda Render üzerinde yayınlanmaktadır (Frankfurt sunucusu).
 - **Git & GitHub:** Sürüm kontrolü, kodun paylaşımı ve Render'ın kodu çektiği depo. Görevler GitHub Projects kanban tablosuyla takip edilmiştir.
@@ -381,8 +381,11 @@ Modelde 16 donanım özelliği kullanıldı (RAM, depolama, batarya, işlemci h�
 Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir Streamlit web sitesine dönüştürüldü
 (canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 4 sekme var:
 
-- **🔮 Fiyat Tahmini:** RAM, depolama, işlemci, batarya, ekran, kamera, 5G ve hızlı şarj seçilince fiyat segmenti,
-  model güveni, segmentin gerçek fiyat aralığı ve bu özelliklere en yakın gerçek telefonlar gösterilir.
+- **🔮 Fiyat Tahmini:** Telefonun adı yazılır (ör. "iPhone") ve model seçilir, sabit özellikleri otomatik gelir;
+  RAM ve depolama seçilince fiyat segmenti, model güveni, segmentin gerçek fiyat aralığı ve varyantın gerçek fiyatı
+  gösterilir. Adı hatırlanmıyorsa RAM, depolama, batarya, kamera, ekran, işlemci, şarj ve 5G listeden seçilir.
+  Yazılan isme ve seçilen özelliklere uyan gerçek telefonlar sağda kartlar hâlinde anında listelenir
+  (ör. "iPhone" + 4 GB RAM seçilince sadece 4 GB RAM'li iPhone'lar).
 - **🛒 Telefon Kataloğu:** 970 gerçek telefon, gerçek fiyatları ve marka logolarıyla mağaza kartları halinde listelenir.
   Marka, segment, fiyat aralığı, 5G filtreleri, sıralama, arama ve "modelin yanıldıkları" filtresi vardır.
 - **⚖️ Karşılaştır:** İki gerçek telefon yan yana karşılaştırılır (gerçek segment ve modelin tahmini dahil).
@@ -392,7 +395,7 @@ Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir St
 
 ### 📸 Ekran Görüntüleri
 
-**🔮 Fiyat Tahmini:** Özellikler seçilince fiyat segmenti, model güveni ve en yakın gerçek telefonlar
+**🔮 Fiyat Tahmini:** Telefon adı yazılıp model seçilince fiyat segmenti, model güveni ve varyantın gerçek fiyatı
 🖼️ [Ekran görüntüsünü aç](https://drive.google.com/file/d/1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd/view?usp=sharing)
 
 **🛒 Telefon Kataloğu:** 970 gerçek telefon, TL fiyatlar, marka logoları ve filtreler
