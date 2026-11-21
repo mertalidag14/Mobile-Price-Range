@@ -321,6 +321,20 @@ Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir St
 
 **Model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu yaklaşık **%76**.
 
+### 📸 Ekran Görüntüleri
+
+**🔮 Fiyat Tahmini:** Özellikler seçilince fiyat segmenti, model güveni ve en yakın gerçek telefonlar
+![Fiyat Tahmini](ekran_goruntuleri/1_fiyat_tahmini.png)
+
+**🛒 Telefon Kataloğu:** 970 gerçek telefon, TL fiyatlar, marka logoları ve filtreler
+![Telefon Kataloğu](ekran_goruntuleri/2_telefon_katalogu.png)
+
+**⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması
+![Karşılaştır](ekran_goruntuleri/3_karsilastir.png)
+
+**📊 Proje Hakkında:** Veri seti, segmentler ve model sonuçlarının özeti
+![Proje Hakkında](ekran_goruntuleri/4_proje_hakkinda.png)
+
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatlarıdır. Sitede 1 ₹ ≈ 0,54 TL
 > kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevrilerek gösterilir. Marka adları ve logoları
 > sahiplerine aittir (logolar: Simple Icons).
