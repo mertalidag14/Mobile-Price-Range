@@ -119,6 +119,7 @@ Sistemi dışarıdan kullanan **aktörleri** (veri analisti, araştırmacı, son
 
 ---
 
+📂 Klasör Yapısı
 Mobile-Price-Range/
 ├── README.md                              # Proje tanıtımı ve sonuçlar
 │
@@ -148,7 +149,7 @@ Mobile-Price-Range/
 │       ├── knn_k_grafigi.png
 │       └── ogrenme_egrisi.png
 │
-└── train.csv                              # Veri seti (Kaggle'dan indirilmelidir)
+└── train.csv                    
 
 ---
 
