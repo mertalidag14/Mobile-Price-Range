@@ -500,8 +500,11 @@ def neden_bu_segment(girdi, sinif, mdl):
               'bu segmente olan güveni kaç puan düşerdi.</div></div>')
 
 
-def tahmin_pdf(baslik, ozellik_listesi, model_adi, model_dogrulugu, olas, sinif, gercek_fiyat, nedenler):
-    # Tahmin sonucunu tek sayfalık bir PDF rapora çevirir (Türkçe karakterler için DejaVu fontu)
+PDF_MOR, PDF_GRI, PDF_YAZI = (91, 33, 182), (90, 90, 110), (30, 27, 46)
+
+
+def pdf_baslat(alt_baslik):
+    # Ortak PDF başlangıcı: DejaVu fontu (Türkçe karakterler), başlık ve oluşturulma zamanı
     from datetime import datetime, timedelta, timezone
     from fpdf import FPDF
 
@@ -510,18 +513,93 @@ def tahmin_pdf(baslik, ozellik_listesi, model_adi, model_dogrulugu, olas, sinif,
     pdf.add_font("DejaVu", "", str(TABAN / "fontlar" / "DejaVuSans.ttf"))
     pdf.add_font("DejaVu", "B", str(TABAN / "fontlar" / "DejaVuSans-Bold.ttf"))
     pdf.add_page()
-    mor, gri = (91, 33, 182), (90, 90, 110)
 
-    def yazi(metin, boyut=11, kalin=False, renk=(30, 27, 46), bosluk=6):
+    def yazi(metin, boyut=11, kalin=False, renk=PDF_YAZI, bosluk=6):
         pdf.set_font("DejaVu", "B" if kalin else "", boyut)
         pdf.set_text_color(*renk)
         pdf.multi_cell(0, bosluk, metin, new_x="LMARGIN", new_y="NEXT")
 
     zaman = datetime.now(timezone(timedelta(hours=3))).strftime("%d.%m.%Y %H:%M")
-    yazi("TeknoTahmin", 22, True, mor, 10)
-    yazi("Telefon fiyat segmenti tahmin raporu", 12, renk=gri)
-    yazi(f"Oluşturulma: {zaman} (Türkiye saati)", 9, renk=gri)
+    yazi("TeknoTahmin", 22, True, PDF_MOR, 10)
+    yazi(alt_baslik, 12, renk=PDF_GRI)
+    yazi(f"Oluşturulma: {zaman} (Türkiye saati)", 9, renk=PDF_GRI)
     pdf.ln(4)
+    return pdf, yazi
+
+
+def pdf_bitir(pdf, yazi):
+    pdf.ln(5)
+    yazi("Not: Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi fiyatlarıdır ve sitede "
+         f"1 ₹ ≈ {KUR} TL kuruyla TL'ye çevriliyor. Tahminler yalnızca donanım özelliklerine dayanır, "
+         "marka değeri modele dahil değildir.", 8, renk=PDF_GRI, bosluk=5)
+    yazi("teknotahmin-0iji.onrender.com · github.com/mertalidag14/Mobile-Price-Range", 8, renk=PDF_GRI, bosluk=5)
+    return bytes(pdf.output())
+
+
+def pdf_tablo(pdf, basliklar, satirlar, genislikler, vurgular=None):
+    # Basit tablo: başlık satırı mor zeminli, vurgulanan hücreler yeşil ve kalın
+    pdf.set_font("DejaVu", "B", 9)
+    pdf.set_fill_color(237, 233, 254)
+    pdf.set_text_color(*PDF_MOR)
+    for b, g in zip(basliklar, genislikler):
+        pdf.cell(g, 7, b, border=1, fill=True)
+    pdf.ln()
+    for i, satir in enumerate(satirlar):
+        for j, (h, g) in enumerate(zip(satir, genislikler)):
+            vurgu = vurgular and (i, j) in vurgular
+            pdf.set_font("DejaVu", "B" if vurgu or j == 0 else "", 9)
+            pdf.set_text_color(*((5, 150, 105) if vurgu else PDF_YAZI))
+            pdf.cell(g, 7, str(h), border=1)
+        pdf.ln()
+
+
+def karsilastirma_pdf(a, b, satir_bilgileri):
+    # İki telefonun karşılaştırma raporu: satir_bilgileri = [(etiket, a_yazi, b_yazi, kazanan 0/1/None)]
+    pdf, yazi = pdf_baslat("İki telefonun karşılaştırma raporu")
+    yazi(f"{a.isim}  ile  {b.isim}", 14, True, bosluk=8)
+    pdf.ln(2)
+    satirlar = [(et, ay, by) for et, ay, by, _ in satir_bilgileri]
+    vurgular = {(i, k + 1) for i, (_, _, _, k) in enumerate(satir_bilgileri) if k is not None}
+    pdf_tablo(pdf, ["", a.isim[:38], b.isim[:38]], satirlar, [48, 71, 71], vurgular)
+    yazi("Yeşil ve kalın değer, o özellikte daha iyi olan telefonu gösterir (fiyatta düşük olan daha iyi).",
+         8, renk=PDF_GRI, bosluk=5)
+    pdf.ln(3)
+    yazi("Özet", 12, True, PDF_MOR)
+    sayac = [sum(1 for *_, k in satir_bilgileri if k == t) for t in (0, 1)]
+    yazi(f"{a.isim}: {sayac[0]} özellikte önde · {b.isim}: {sayac[1]} özellikte önde", 10)
+    for t in (a, b):
+        dogru = "doğru bildi" if t.tahmin == t.segment else "yanıldı"
+        yazi(f"{t.isim}: gerçek segmenti {SEGMENTLER[t.segment][0]}, model {SEGMENTLER[t.tahmin][0]} dedi ({dogru}).", 10)
+    return pdf_bitir(pdf, yazi)
+
+
+def butce_pdf(butce, oncelik, toplam, telefonlar):
+    # Bütçeye uygun en iyi telefonlar raporu: telefonlar = [(satır, puan, güçlü yanlar yazısı, fırsat mı)]
+    pdf, yazi = pdf_baslat("Bütçeye göre telefon önerileri")
+    yazi(f"Bütçe: {butce:,.0f} TL".replace(",", ".") + f"  ·  Öncelik: {oncelik}", 14, True, bosluk=8)
+    yazi(f"Bu bütçeye {toplam} telefon uyuyor. Seçilen önceliğe göre en iyi {len(telefonlar)} tanesi:", 10)
+    pdf.ln(2)
+    for sira, (r, puan, guclu, firsat) in enumerate(telefonlar, 1):
+        yazi(f"{sira}. {r.isim}  —  {puan:.0f}/100 puan", 12, True, PDF_MOR, 7)
+        yazi(f"Fiyat: {tl(r.price)} ({rupi(r.price)})  ·  Segment: {SEGMENTLER[r.segment][0]}", 10)
+        yazi(f"{r.ram_capacity:g} GB RAM · {gb_yaz(r.internal_memory)} · {r.battery_capacity:.0f} mAh · "
+             f"{sarj_yazisi(r.fast_charging)} · {r.screen_size:g}\" {r.refresh_rate} Hz · "
+             f"{r.primary_camera_rear:g} MP kamera · {r.processor_speed:g} GHz işlemci"
+             + (" · 5G" if r.g5 else ""), 9, renk=PDF_GRI, bosluk=5)
+        yazi(f"En güçlü yanları: {guclu}", 9, bosluk=5)
+        if firsat:
+            yazi("Fiyatına göre güçlü: model bu telefonu gerçek fiyatından daha üst bir segmentte görüyor.",
+                 9, renk=(5, 150, 105), bosluk=5)
+        pdf.ln(2)
+    yazi("Puan: seçilen önceliğe göre ağırlıklandırılmış özelliklerin 970 telefon arasındaki yerinden hesaplanıyor "
+         "(100 = o özelliklerde en iyiler).", 8, renk=PDF_GRI, bosluk=5)
+    return pdf_bitir(pdf, yazi)
+
+
+def tahmin_pdf(baslik, ozellik_listesi, model_adi, model_dogrulugu, olas, sinif, gercek_fiyat, nedenler):
+    # Tahmin sonucunu tek sayfalık bir PDF rapora çevirir
+    pdf, yazi = pdf_baslat("Telefon fiyat segmenti tahmin raporu")
+    mor, gri = PDF_MOR, PDF_GRI
     yazi(baslik, 15, True, bosluk=8)
     pdf.ln(1)
     yazi("Özellikler", 12, True, mor)
@@ -562,12 +640,7 @@ def tahmin_pdf(baslik, ozellik_listesi, model_adi, model_dogrulugu, olas, sinif,
             yazi(f"- {ad}: {deger}" + (f" ({seviye})" if seviye else "") + f"  ->  güvene katkısı +%{etki * 100:.0f}", 10)
         yazi("Katkı: bu özellik ortalama bir telefondaki gibi olsaydı modelin bu segmente olan güveni kaç puan düşerdi.",
              8, renk=gri, bosluk=5)
-    pdf.ln(5)
-    yazi("Not: Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi fiyatlarıdır ve sitede "
-         f"1 ₹ ≈ {KUR} TL kuruyla TL'ye çevriliyor. Tahmin yalnızca donanım özelliklerine dayanır, "
-         "marka değeri modele dahil değildir.", 8, renk=gri, bosluk=5)
-    yazi("teknotahmin-0iji.onrender.com · github.com/mertalidag14/Mobile-Price-Range", 8, renk=gri, bosluk=5)
-    return bytes(pdf.output())
+    return pdf_bitir(pdf, yazi)
 
 
 def fiyat_cetveli(olas, gercek_fiyat=None):
@@ -1128,6 +1201,17 @@ with sekme_karsilastir:
                     f'{ust_satir}{govde}</table>', unsafe_allow_html=True)
         st.caption("Yeşil değer o özellikte daha iyi olan telefonu gösterir (fiyatta düşük olan daha iyi). "
                    "Katalogdaki kartlarda \"⚖️ Karşılaştır\" butonuyla da telefon seçebilirsin.")
+        # Karşılaştırma raporu (PDF)
+        pdf_satirlari = [("Gerçek segment", SEGMENTLER[a.segment][0], SEGMENTLER[b.segment][0], None),
+                         ("Modelin tahmini", SEGMENTLER[a.tahmin][0], SEGMENTLER[b.tahmin][0], None)]
+        for et, s, br, iyi in satirlar:
+            ya = tl(a[s]) if s == "price" else f"{a[s]:g}{br}"
+            yb = tl(b[s]) if s == "price" else f"{b[s]:g}{br}"
+            kazanan = None if a[s] == b[s] else (0 if (a[s] > b[s]) == iyi else 1)
+            pdf_satirlari.append((et, ya, yb, kazanan))
+        st.download_button("📄 Karşılaştırmayı PDF olarak indir", data=karsilastirma_pdf(a, b, pdf_satirlari),
+                           file_name=f"TeknoTahmin_karsilastirma_{a.isim[:25]}_{b.isim[:25]}.pdf".replace(" ", "_"),
+                           mime="application/pdf", key="pdf_kars")
     with radar_kol:
         st.markdown('<div class="bolum" style="margin-top:1rem">🕸️ Özellik haritası</div>', unsafe_allow_html=True)
         st.markdown(radar_svg([(a.isim, a, "#60a5fa"), (b.isim, b, "#f472b6")]), unsafe_allow_html=True)
@@ -1215,6 +1299,16 @@ with sekme_butce:
             st.caption("Puan: seçtiğin önceliğe göre ağırlıklandırılmış özelliklerin, 970 telefon arasındaki yerinden "
                        "hesaplanıyor (100 = o özelliklerde en iyiler). \"Fiyatına göre güçlü\" rozeti, modelin "
                        "telefonun donanımına bakıp gerçek fiyatından daha üst bir segment tahmin ettiği telefonlarda çıkıyor.")
+            # Bütçe raporu (PDF): en iyi 10 telefon
+            pdf_telefonlar = []
+            for r in aday.head(10).itertuples():
+                guclu = sorted(agirlik, key=lambda s: -yuzdelik.loc[r.Index, s])[:2]
+                guclu_yazi = ", ".join(f"{OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}" for s in guclu)
+                pdf_telefonlar.append((r, r.puan, guclu_yazi, r.tahmin > r.segment))
+            st.download_button("📄 Bu listeyi PDF olarak indir (en iyi 10 telefon)",
+                               data=butce_pdf(butce, oncelik.split(" ", 1)[1], len(aday), pdf_telefonlar),
+                               file_name=f"TeknoTahmin_butce_{int(butce)}_TL.pdf", mime="application/pdf",
+                               key="pdf_butce")
 
 # ------------------------------------------------------------
 # 5) Proje hakkında

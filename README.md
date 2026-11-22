@@ -125,7 +125,7 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 - **Matplotlib & Seaborn:** Histogram, kutu grafikleri (boxplot), korelasyon ısı haritası (heatmap), confusion matrix, öğrenme eğrisi ve özellik önemi grafiklerini çizmek için.
 - **Scikit-learn:** KNN, Random Forest, `GridSearchCV`, `Pipeline`, ölçekleyiciler, cross-validation ve tüm değerlendirme metrikleri için.
 - **XGBoost & LightGBM:** Karşılaştırma için kullandığımız Gradient Boosting modelleri.
-- **fpdf2:** Sitede tahmin sonucunu PDF rapor olarak hazırlamak için (Türkçe karakterler için DejaVu fontuyla).
+- **fpdf2:** Sitede tahmin, karşılaştırma ve bütçe sonuçlarını PDF rapor olarak hazırlamak için (Türkçe karakterler için DejaVu fontuyla).
 - **Joblib:** Eğitilen en iyi modeli `.pkl` dosyası olarak kaydedip gerektiğinde tekrar yüklemek için.
 
 ### 🤖 Makine öğrenmesi algoritmaları
@@ -479,6 +479,8 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Model seçici:** Tahmini Random Forest, KNN ya da XGBoost'a yaptırabiliyorsun. Altındaki "Üç model ne diyor?" tablosunda aynı telefon için üç modelin tahmini, güveni ve test doğruluğu yan yana görünüyor. Analizde karşılaştırdığımız modeller sitede de canlı karşılaştırılabiliyor.
 - **Bütçeye göre öneri:** Bütçeni yazınca ya da hazır bütçelerden (7,5 / 10 / 15 / 20 / 30 bin TL) birine basınca, seçtiğin önceliğe göre en iyi telefonlar puanlarıyla ve "en güçlü yanlarıyla" listeleniyor. Modelin donanımına bakıp gerçek fiyatından daha üst bir segment tahmin ettiği telefonlarda "🔥 Fiyatına göre güçlü" rozeti çıkıyor. 5G ve marka filtresi de var.
 - **PDF rapor:** Tahmin sonucunu (özellikler, tahmin edilen segment, güven, olasılıklar ve "Neden bu segment?" açıklaması) tek tıkla PDF olarak indirebiliyorsun.
+- **Karşılaştırma PDF'i:** Karşılaştır sekmesinde seçtiğin iki telefonun özellik tablosunu (hangi özellikte hangisinin önde olduğu yeşille işaretli), gerçek segmentlerini ve modelin tahminlerini PDF olarak indirebiliyorsun.
+- **Bütçe listesi PDF'i:** Bütçeme Göre sekmesinde bütçene ve önceliğine uyan en iyi 10 telefonu puanları, özellikleri ve en güçlü yanlarıyla birlikte PDF olarak indirebiliyorsun. Mağazaya giderken ya da arkadaşına atarken işe yarıyor.
 - **Paylaşma linki:** Bir telefon modeli seçip tahmin aldıktan sonra "🔗 Paylaş" ile bir link çıkıyor. Bu linki açan kişi aynı telefonu, aynı RAM/depolamayı ve aynı modelin tahminini görüyor.
 - **Canlı model grafikleri:** Proje Hakkında sekmesindeki özellik önemi ve karışıklık matrisi, sitedeki modelden anlık olarak hesaplanıyor.
 - **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor.
@@ -487,7 +489,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 
 ### 📸 Ekran Görüntüleri
 
-**🔮 Fiyat Tahmini:** Hızlı dene butonları, tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
+**🔮 Fiyat Tahmini:** Hızlı dene butonları, model seçici (Random Forest / KNN / XGBoost), tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
 
 ![TeknoTahmin – Fiyat Tahmini](https://drive.google.com/thumbnail?id=1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd&sz=w1600)
 
@@ -500,6 +502,11 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 **⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması ve özellik haritası (radar grafik)
 
 ![TeknoTahmin – Karşılaştır](https://drive.google.com/thumbnail?id=1JCYjiNZqY0HPMuGOkD4iVuRtXl5neb3V&sz=w1600)
+
+
+**💰 Bütçeme Göre:** Bütçe ve önceliğe göre en iyi telefonlar, 100 üzerinden puanlarıyla
+
+![TeknoTahmin – Bütçeme Göre](https://drive.google.com/thumbnail?id=18QYPl3v3ynZTKn_XF7U4NVlK53Y_EZqy&sz=w1600)
 
 
 **📊 Proje Hakkında:** Yöntem, ekip ve modelin grafikleri (özellik önemi, karışıklık matrisi)
