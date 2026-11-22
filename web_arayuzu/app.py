@@ -7,7 +7,6 @@ import base64
 import math
 import random
 from pathlib import Path
-from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
@@ -153,7 +152,6 @@ st.markdown(f"""
 content: ""; position: fixed; inset: -60px; z-index: 0;
 background: url("data:image/svg+xml;base64,{arka_plan_svg()}") center / cover no-repeat;
 filter: blur(5px) saturate(1.2);
-animation: suzul 40s ease-in-out infinite alternate;
 }}
 .stApp::after {{
 content: ""; position: fixed; inset: -30px; z-index: 0; pointer-events: none;
@@ -161,10 +159,9 @@ background:
   url("data:image/svg+xml;base64,{ikon_katmani_svg()}") center / cover no-repeat,
   radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1.5px) 0 0 / 26px 26px,
   radial-gradient(ellipse at 50% 40%, rgba(10,10,25,.2), rgba(10,10,25,.7));
-animation: yuzer 18s ease-in-out infinite alternate;
 }}
-@keyframes suzul {{ from {{ transform: translate(0, 0) scale(1); }} to {{ transform: translate(-30px, -20px) scale(1.06); }} }}
-@keyframes yuzer {{ from {{ transform: translateY(0); }} to {{ transform: translateY(-22px); }} }}
+/* Not: arka plan bilerek hareketsiz. Bulanık cam kutunun arkası hareket edince tarayıcı her karede yeniden
+   bulanıklaştırıyor ve sayfa kasıyordu. */
 .block-container::before {{
 content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
 background: linear-gradient(135deg, rgba(167,139,250,.7), rgba(244,114,182,.25) 40%, rgba(96,165,250,.6));
@@ -172,7 +169,7 @@ background: linear-gradient(135deg, rgba(167,139,250,.7), rgba(244,114,182,.25) 
 }}
 .logo {{ background-size: 200% auto !important; animation: parilti 6s linear infinite; }}
 @keyframes parilti {{ to {{ background-position: 200% center; }} }}
-@media (prefers-reduced-motion: reduce) {{ .stApp::before, .stApp::after, .logo {{ animation: none; }} }}
+@media (prefers-reduced-motion: reduce) {{ .logo {{ animation: none; }} }}
 [data-testid="stAppViewContainer"] {{ position: relative; z-index: 1; background: transparent; }}
 [data-testid="stHeader"] {{ background: transparent; }}
 .block-container {{
@@ -240,7 +237,13 @@ background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }}
 .mini-fiyat {{ font-weight: 800; color: #fff; font-size: .95rem; margin-top: .2rem; }}
 .mini-fiyat .rozet {{ font-size: .62rem; margin-left: .3rem; vertical-align: middle; }}
 .not {{ color: rgba(255,255,255,.5); font-size: .78rem; text-align: center; margin-top: 1.6rem; }}
-a.marka, a.marka:visited, a.marka:hover {{ color: #fff !important; text-decoration: none !important; cursor: pointer; transition: transform .15s, border-color .15s; }}
+.st-key-marka_seridi {{ align-items: center; flex-wrap: wrap; margin: -.4rem 0 1rem; }}
+.etiket-marka {{ color: rgba(255,255,255,.55); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }}
+.st-key-marka_seridi button {{ border-radius: 12px; padding: .3rem .85rem; min-height: 0; color: #fff;
+background: linear-gradient(135deg, rgba(167,139,250,.18), rgba(96,165,250,.10)); border: 1px solid rgba(255,255,255,.14);
+transition: transform .15s, border-color .15s; }}
+.st-key-marka_seridi button:hover {{ transform: translateY(-2px); border-color: rgba(196,181,253,.7); color: #fff; }}
+.st-key-marka_seridi button p {{ font-weight: 800; font-size: .92rem; white-space: nowrap; }}
 [data-testid="stButtonGroup"] [role="radiogroup"] {{ flex-wrap: wrap; overflow: visible; }}
 a.marka:hover {{ transform: translateY(-2px); border-color: rgba(196,181,253,.7); }}
 .cetvel {{ margin: 1rem 0 .4rem; }}
@@ -278,7 +281,8 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 .block-container {{ margin: 1rem auto; padding: 1.4rem 1rem !important; border-radius: 20px; }}
 .baslik {{ font-size: 1.6rem; }}
 .cubuk {{ grid-template-columns: 105px 1fr 42px; }}
-.markalar {{ flex-wrap: nowrap; overflow-x: auto; padding-bottom: .4rem; margin-bottom: .8rem; }}
+.markalar, .st-key-marka_seridi {{ flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: .4rem; margin-bottom: .8rem; }}
+.st-key-marka_seridi > div {{ flex: none; }}
 .markalar .marka {{ flex: none; }}
 .cipler {{ flex-wrap: nowrap; overflow-x: auto; }}
 .cip {{ flex: none; }}
@@ -322,9 +326,16 @@ def model_egit():
     return model, dogruluk, karisiklik
 
 
+@st.cache_data
+def katalog_tahminleri():
+    # Katalogdaki her telefon için modelin tahmini (bir kez hesaplanıp saklanır)
+    return model_egit()[0].predict(veri_yukle()[0][OZELLIKLER])
+
+
 df, SINIRLAR = veri_yukle()
+df = df.copy()  # önbellekteki tabloyu değiştirmemek için
 model, DOGRULUK, KARISIKLIK = model_egit()
-df["tahmin"] = model.predict(df[OZELLIKLER])
+df["tahmin"] = katalog_tahminleri()
 
 
 def segment_araligi(s):
@@ -529,27 +540,36 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 
-def marka_cipi(marka, adet):
-    # Tıklanınca katalog o markaya göre süzülerek açılır (?marka=... ile)
-    bilgi = LOGOLAR.get(marka.lower())
-    link = f'href="?marka={quote(marka)}" target="_self"'
-    if bilgi and bilgi[5]:  # yazı logosu: logo ismi zaten gösteriyor
-        return f'<a class="marka" {link} title="{marka} telefonlarını göster">{logo(marka, 15)}<small>{adet}</small></a>'
-    return f'<a class="marka" {link} title="{marka} telefonlarını göster">{logo(marka)}{marka}<small>{adet}</small></a>'
+def marka_tikla(marka):
+    # Sayfa yeniden yüklenmeden katalog o markaya göre süzülür ve katalog sekmesine geçilir
+    st.session_state["k_marka"] = [marka]
+    st.session_state["_sekmeye_git"] = 1
 
 
-# Marka logosuna tıklanarak gelindiyse katalogu o markayla aç
-_tiklanan_marka = st.query_params.get("marka")
-if _tiklanan_marka:
-    if _tiklanan_marka in set(df["marka"]):
-        st.session_state["k_marka"] = [_tiklanan_marka]
-        st.session_state["_sekmeye_git"] = 1
-    del st.query_params["marka"]
+def logo_maskesi(marka):
+    # Marka logosunu butonun içine CSS maskesi olarak koymak için tek renk SVG (base64)
+    yol, x, y, w, h, yazi = LOGOLAR[marka.lower()]
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {y} {w} {h}"><path d="{yol}"/></svg>'
+    return base64.b64encode(svg.encode()).decode(), w / h, yazi
+
 
 ilk_markalar = df["marka"].value_counts().head(12)
-st.markdown('<div class="markalar"><span class="etiket">Popüler markalar</span>'
-            + "".join(marka_cipi(m, n) for m, n in ilk_markalar.items())
-            + '</div>', unsafe_allow_html=True)
+marka_css = []
+with st.container(horizontal=True, key="marka_seridi", gap="small"):
+    st.markdown('<span class="etiket-marka">Popüler markalar</span>', unsafe_allow_html=True, width="content")
+    for i, (m, n) in enumerate(ilk_markalar.items()):
+        etiket = f"{m}  {n}"
+        if m.lower() in LOGOLAR:
+            veri, oran, yazi = logo_maskesi(m)
+            boy = 13 if yazi else 16
+            if yazi:  # yazı logosu: marka adı logoda zaten var, sadece adet yazılsın
+                etiket = f"{n}"
+            marka_css.append(
+                f'.st-key-mb_{i} button::before {{ content: ""; flex: none; width: {boy * oran:.0f}px; height: {boy}px; '
+                f'margin-right: .45rem; background: #fff; -webkit-mask: url("data:image/svg+xml;base64,{veri}") '
+                f'center / contain no-repeat; mask: url("data:image/svg+xml;base64,{veri}") center / contain no-repeat; }}')
+        st.button(etiket, key=f"mb_{i}", on_click=marka_tikla, args=(m,), help=f"{m} telefonlarını göster")
+st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer kaplamaz
 
 sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_hakkinda = st.tabs(
     ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "📊 Proje Hakkında"])
@@ -778,6 +798,40 @@ def kart_html(r):
     )
 
 
+def karsilastirmaya_ekle(sira):
+    secilenler = [s for s in st.session_state.get("kars", []) if s != sira] + [sira]
+    if len(secilenler) == 2:
+        # İki telefon seçildi: karşılaştırma sekmesi güncellensin diye tüm sayfa yenilenecek
+        st.session_state.update(k1=secilenler[0], k2=secilenler[1], kars=[], _sekmeye_git=2, _tam_yenile=True)
+    else:
+        st.session_state["kars"] = secilenler
+
+
+@st.fragment
+def katalog_kartlari(gosterilen):
+    # Kartlar ayrı bir parça: "Karşılaştır"a basınca sadece bu kısım yenilenir, sayfanın tamamı değil (donmayı önler)
+    if st.session_state.pop("_tam_yenile", False):
+        st.rerun(scope="app")
+    bekleyen = st.session_state.get("kars", [])
+    if bekleyen:
+        u1, u2 = st.columns([4, 1])
+        u1.info(f"⚖️ **{df.iloc[bekleyen[0]].isim}** seçildi. Karşılaştırmak için bir telefon daha seç.")
+        u2.button("Vazgeç", on_click=lambda: st.session_state.update(kars=[]), use_container_width=True)
+    if gosterilen.empty:
+        st.info("Bu filtrelere uyan telefon yok. Filtreleri gevşetmeyi dene.")
+        return
+    satirlar_listesi = list(gosterilen.itertuples())
+    for bas in range(0, len(satirlar_listesi), 3):
+        kolonlar = st.columns(3)
+        for kol, r in zip(kolonlar, satirlar_listesi[bas:bas + 3]):
+            with kol:
+                st.markdown(kart_html(r), unsafe_allow_html=True)
+                secili_mi = r.Index in bekleyen
+                st.button("✓ Seçildi" if secili_mi else "⚖️ Karşılaştır", key=f"kb_{r.Index}",
+                          on_click=karsilastirmaya_ekle, args=(r.Index,), disabled=secili_mi,
+                          use_container_width=True)
+
+
 with sekme_katalog:
     st.markdown('<div class="baslik">Telefon Kataloğu</div>'
                 f'<div class="alt">{len(df)} gerçek telefon, gerçek özellikleri ve satış fiyatlarıyla '
@@ -862,31 +916,7 @@ with sekme_katalog:
         sayfa = b3.number_input(f"Sayfa (/{toplam_sayfa})", 1, toplam_sayfa, 1)
         gosterilen = liste.iloc[(sayfa - 1) * SAYFA_BOYUTU: sayfa * SAYFA_BOYUTU]
 
-        def karsilastirmaya_ekle(sira):
-            secilenler = [s for s in st.session_state.get("kars", []) if s != sira] + [sira]
-            if len(secilenler) == 2:
-                st.session_state.update(k1=secilenler[0], k2=secilenler[1], kars=[], _sekmeye_git=2)
-            else:
-                st.session_state["kars"] = secilenler
-
-        bekleyen = st.session_state.get("kars", [])
-        if bekleyen:
-            u1, u2 = st.columns([4, 1])
-            u1.info(f"⚖️ **{df.iloc[bekleyen[0]].isim}** seçildi. Karşılaştırmak için bir telefon daha seç.")
-            u2.button("Vazgeç", on_click=lambda: st.session_state.update(kars=[]), use_container_width=True)
-        if gosterilen.empty:
-            st.info("Bu filtrelere uyan telefon yok. Filtreleri gevşetmeyi dene.")
-        else:
-            satirlar_listesi = list(gosterilen.itertuples())
-            for bas in range(0, len(satirlar_listesi), 3):
-                kolonlar = st.columns(3)
-                for kol, r in zip(kolonlar, satirlar_listesi[bas:bas + 3]):
-                    with kol:
-                        st.markdown(kart_html(r), unsafe_allow_html=True)
-                        secili_mi = r.Index in bekleyen
-                        st.button("✓ Seçildi" if secili_mi else "⚖️ Karşılaştır", key=f"kb_{r.Index}",
-                                  on_click=karsilastirmaya_ekle, args=(r.Index,), disabled=secili_mi,
-                                  use_container_width=True)
+        katalog_kartlari(gosterilen)
 
 # ------------------------------------------------------------
 # 3) Karşılaştırma

@@ -5,3 +5,7 @@ textColor = "#f5f5ff"
 
 [client]
 toolbarMode = "minimal"
+
+[runner]
+# Kodu her çalıştırmada 'sihirli komut' taraması yapılmasın (sayfa daha hızlı yenilenir)
+magicEnabled = false
