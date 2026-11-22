@@ -7,12 +7,17 @@ import base64
 import math
 import random
 from pathlib import Path
+from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from xgboost import XGBClassifier
 
 from logolar import LOGOLAR
 
@@ -237,6 +242,14 @@ background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }}
 .mini-fiyat {{ font-weight: 800; color: #fff; font-size: .95rem; margin-top: .2rem; }}
 .mini-fiyat .rozet {{ font-size: .62rem; margin-left: .3rem; vertical-align: middle; }}
 .not {{ color: rgba(255,255,255,.5); font-size: .78rem; text-align: center; margin-top: 1.6rem; }}
+.model-tablo {{ margin-top: .3rem; font-size: .88rem; }}
+.model-tablo th, .model-tablo td {{ padding: .45rem .6rem; }}
+.model-tablo tr.secili td {{ background: rgba(167,139,250,.14); }}
+.butce-puan {{ position: absolute; top: .8rem; right: .8rem; padding: .2rem .55rem; border-radius: 10px; font-weight: 900;
+font-size: .85rem; color: #0f1029; background: linear-gradient(135deg, #c4b5fd, #f9a8d4); }}
+.butce-neden {{ margin-top: .5rem; font-size: .78rem; color: rgba(255,255,255,.75); }}
+.firsat {{ display: inline-block; margin-top: .35rem; padding: .1rem .5rem; border-radius: 99px; font-size: .7rem; font-weight: 800;
+color: #34d399; background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.45); }}
 .st-key-marka_seridi {{ align-items: center; flex-wrap: wrap; margin: -.4rem 0 1rem; }}
 .etiket-marka {{ color: rgba(255,255,255,.55); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }}
 .st-key-marka_seridi button {{ border-radius: 12px; padding: .3rem .85rem; min-height: 0; color: #fff;
@@ -329,6 +342,25 @@ def model_egit():
     return model, dogruluk, karisiklik
 
 
+@st.cache_resource
+def ek_modeller():
+    # Sitedeki model seçici için KNN ve XGBoost (Random Forest ile aynı 10 özellik ve aynı eğitim/test bölmesi)
+    df, _ = veri_yukle()
+    X, y = df[OZELLIKLER], df["segment"]
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    knn_arama = GridSearchCV(Pipeline([("olcek", StandardScaler()), ("knn", KNeighborsClassifier())]),
+                             {"knn__n_neighbors": list(range(1, 30, 2))}, cv=5, scoring="accuracy").fit(X_tr, y_tr)
+    k = knn_arama.best_params_["knn__n_neighbors"]
+    knn = Pipeline([("olcek", StandardScaler()), ("knn", KNeighborsClassifier(n_neighbors=k))])
+    xgb_ayar = dict(n_estimators=300, max_depth=4, learning_rate=0.1, subsample=0.9, colsample_bytree=0.9,
+                    random_state=42, n_jobs=1)
+    sonuc = {}
+    for ad, yeni in [(f"KNN (k={k})", lambda: knn), ("XGBoost", lambda: XGBClassifier(**xgb_ayar))]:
+        dogruluk = yeni().fit(X_tr, y_tr).score(X_te, y_te)
+        sonuc[ad] = (yeni().fit(X, y), dogruluk)  # sitede tüm veriyle eğitilmiş hâli kullanılıyor
+    return sonuc
+
+
 @st.cache_data
 def katalog_tahminleri():
     # Katalogdaki her telefon için modelin tahmini (bir kez hesaplanıp saklanır)
@@ -339,6 +371,8 @@ df, SINIRLAR = veri_yukle()
 df = df.copy()  # önbellekteki tabloyu değiştirmemek için
 model, DOGRULUK, KARISIKLIK = model_egit()
 df["tahmin"] = katalog_tahminleri()
+# Model seçici: ad -> (eğitilmiş model, test doğruluğu)
+MODELLER = {"Random Forest": (model, DOGRULUK)} | ek_modeller()
 
 
 def segment_araligi(s):
@@ -413,6 +447,7 @@ OZELLIK_ADI = {
     "processor_speed": ("⚙️", "İşlemci", lambda v: f"{v:g} GHz"),
     "refresh_rate": ("🔄", "Yenileme hızı", lambda v: f"{v:g} Hz"),
     "primary_camera_rear": ("📷", "Ana kamera", lambda v: f"{v:g} MP"),
+    "primary_camera_front": ("🤳", "Ön kamera", lambda v: f"{v:g} MP"),
     "resolution_height": ("📐", "Çözünürlük", lambda v: f"{v:.0f} piksel"),
     "screen_size": ("🖥️", "Ekran", lambda v: f"{v:g}\""),
     "5G_or_not": ("📶", "5G", lambda v: "var" if v else "yok"),
@@ -436,30 +471,103 @@ def seviye_yazisi(sutun, deger):
     return "çok düşük"
 
 
-def neden_bu_segment(girdi, sinif):
+def neden_verisi(girdi, sinif, mdl):
     # Her özelliği tek tek veri setinin ortancasıyla değiştirip modelin bu segmente olan güveninin
     # ne kadar düştüğüne bakar. En çok düşüren özellikler, tahmini en çok destekleyenlerdir.
-    temel = model.predict_proba(girdi)[0][sinif]
+    temel = mdl.predict_proba(girdi)[0][sinif]
     denemeler = pd.concat([girdi] * len(OZELLIKLER), ignore_index=True)
     for i, sutun in enumerate(OZELLIKLER):
         denemeler.loc[i, sutun] = df[sutun].median()
-    etkiler = temel - model.predict_proba(denemeler)[:, sinif]
-    sirali = sorted(zip(OZELLIKLER, etkiler), key=lambda x: -x[1])
-    satirlar = []
-    for sutun, etki in sirali[:3]:
+    etkiler = temel - mdl.predict_proba(denemeler)[:, sinif]
+    sonuc = []
+    for sutun, etki in sorted(zip(OZELLIKLER, etkiler), key=lambda x: -x[1])[:3]:
         if etki < 0.01:
             break
         ikon, ad, yaz = OZELLIK_ADI[sutun]
         deger = girdi.iloc[0][sutun]
-        seviye = seviye_yazisi(sutun, deger)
-        satirlar.append(f'<li><span>{ikon} <b>{ad}</b> {yaz(deger)}'
-                        + (f' <i>({seviye})</i>' if seviye else '')
-                        + f'</span><span class="etki">+%{etki * 100:.0f}</span></li>')
+        sonuc.append((ikon, ad, yaz(deger), seviye_yazisi(sutun, deger), float(etki)))
+    return sonuc
+
+
+def neden_bu_segment(girdi, sinif, mdl):
+    satirlar = [f'<li><span>{ikon} <b>{ad}</b> {deger}' + (f' <i>({seviye})</i>' if seviye else '')
+                + f'</span><span class="etki">+%{etki * 100:.0f}</span></li>'
+                for ikon, ad, deger, seviye, etki in neden_verisi(girdi, sinif, mdl)]
     if not satirlar:
         return ""
     return ('<div class="neden"><div class="neden-baslik">🧐 Neden bu segment?</div><ul>' + "".join(satirlar)
             + '</ul><div class="neden-not">Sağdaki sayı: bu özellik ortalama bir telefondaki gibi olsaydı, modelin '
               'bu segmente olan güveni kaç puan düşerdi.</div></div>')
+
+
+def tahmin_pdf(baslik, ozellik_listesi, model_adi, model_dogrulugu, olas, sinif, gercek_fiyat, nedenler):
+    # Tahmin sonucunu tek sayfalık bir PDF rapora çevirir (Türkçe karakterler için DejaVu fontu)
+    from datetime import datetime, timedelta, timezone
+    from fpdf import FPDF
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(True, margin=15)
+    pdf.add_font("DejaVu", "", str(TABAN / "fontlar" / "DejaVuSans.ttf"))
+    pdf.add_font("DejaVu", "B", str(TABAN / "fontlar" / "DejaVuSans-Bold.ttf"))
+    pdf.add_page()
+    mor, gri = (91, 33, 182), (90, 90, 110)
+
+    def yazi(metin, boyut=11, kalin=False, renk=(30, 27, 46), bosluk=6):
+        pdf.set_font("DejaVu", "B" if kalin else "", boyut)
+        pdf.set_text_color(*renk)
+        pdf.multi_cell(0, bosluk, metin, new_x="LMARGIN", new_y="NEXT")
+
+    zaman = datetime.now(timezone(timedelta(hours=3))).strftime("%d.%m.%Y %H:%M")
+    yazi("TeknoTahmin", 22, True, mor, 10)
+    yazi("Telefon fiyat segmenti tahmin raporu", 12, renk=gri)
+    yazi(f"Oluşturulma: {zaman} (Türkiye saati)", 9, renk=gri)
+    pdf.ln(4)
+    yazi(baslik, 15, True, bosluk=8)
+    pdf.ln(1)
+    yazi("Özellikler", 12, True, mor)
+    for etiket, deger in ozellik_listesi:
+        pdf.set_font("DejaVu", "B", 10)
+        pdf.set_text_color(30, 27, 46)
+        pdf.cell(55, 6, etiket)
+        pdf.set_font("DejaVu", "", 10)
+        pdf.cell(0, 6, deger, new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+    yazi("Tahmin", 12, True, mor)
+    yazi(f"Tahmin edilen segment: {SEGMENTLER[sinif][0]}", 14, True, bosluk=8)
+    yazi(f"Model güveni: %{olas[sinif] * 100:.0f}")
+    yazi(f"Bu segmentteki telefonların fiyat aralığı: {segment_araligi(sinif)}")
+    if gercek_fiyat is not None:
+        gercek_seg = int(pd.cut([gercek_fiyat], SINIRLAR, labels=False, include_lowest=True)[0])
+        yazi(f"Bu varyantın gerçek fiyatı: {tl(gercek_fiyat)} ({rupi(gercek_fiyat)}), "
+             f"gerçek segmenti: {SEGMENTLER[gercek_seg][0]}")
+    yazi(f"Kullanılan model: {model_adi} (test doğruluğu %{model_dogrulugu * 100:.1f})", renk=gri)
+    pdf.ln(3)
+    yazi("Segment olasılıkları", 12, True, mor)
+    for i, p in enumerate(olas):
+        pdf.set_font("DejaVu", "", 10)
+        pdf.set_text_color(30, 27, 46)
+        pdf.cell(45, 6, SEGMENTLER[i][0])
+        pdf.set_fill_color(235, 230, 245)
+        pdf.cell(100, 4, "", fill=True)
+        x = pdf.get_x()
+        pdf.set_x(x - 100)
+        pdf.set_fill_color(124, 58, 237)
+        pdf.cell(max(100 * p, 0.1), 4, "", fill=True)
+        pdf.set_x(x + 3)
+        pdf.cell(0, 6, f"%{p * 100:.0f}", new_x="LMARGIN", new_y="NEXT")
+    if nedenler:
+        pdf.ln(3)
+        yazi("Neden bu segment?", 12, True, mor)
+        for _, ad, deger, seviye, etki in nedenler:
+            yazi(f"- {ad}: {deger}" + (f" ({seviye})" if seviye else "") + f"  ->  güvene katkısı +%{etki * 100:.0f}", 10)
+        yazi("Katkı: bu özellik ortalama bir telefondaki gibi olsaydı modelin bu segmente olan güveni kaç puan düşerdi.",
+             8, renk=gri, bosluk=5)
+    pdf.ln(5)
+    yazi("Not: Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi fiyatlarıdır ve sitede "
+         f"1 ₹ ≈ {KUR} TL kuruyla TL'ye çevriliyor. Tahmin yalnızca donanım özelliklerine dayanır, "
+         "marka değeri modele dahil değildir.", 8, renk=gri, bosluk=5)
+    yazi("teknotahmin-0iji.onrender.com · github.com/mertalidag14/Mobile-Price-Range", 8, renk=gri, bosluk=5)
+    return bytes(pdf.output())
 
 
 def fiyat_cetveli(olas, gercek_fiyat=None):
@@ -556,6 +664,20 @@ def logo_maskesi(marka):
     return base64.b64encode(svg.encode()).decode(), w / h, yazi
 
 
+# Paylaşılan bir tahmin linkiyle gelindiyse (?tel=...&ram=...&depo=...&model=...) aynı tahmini hazırla
+if "tel" in st.query_params:
+    _tel = st.query_params.get("tel")
+    if _tel in set(df["temel_model"]):
+        st.session_state.update(t_isim=_tel, t_model=_tel)
+        for _anahtar, _durum in [("ram", "t_ram"), ("depo", "t_depo")]:
+            try:
+                st.session_state[_durum] = int(float(st.query_params.get(_anahtar)))
+            except (TypeError, ValueError):
+                pass
+        if st.query_params.get("model") in MODELLER:
+            st.session_state["t_algo"] = st.query_params.get("model")
+    st.query_params.clear()
+
 ilk_markalar = df["marka"].value_counts().head(12)
 marka_css = []
 with st.container(horizontal=True, key="marka_seridi", gap="small"):
@@ -574,8 +696,8 @@ with st.container(horizontal=True, key="marka_seridi", gap="small"):
         st.button(etiket, key=f"mb_{i}", on_click=marka_tikla, args=(m,), help=f"{m} telefonlarını göster")
 st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer kaplamaz
 
-sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_hakkinda = st.tabs(
-    ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "📊 Proje Hakkında"])
+sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_hakkinda = st.tabs(
+    ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "📊 Proje Hakkında"])
 
 # ------------------------------------------------------------
 # 1) Tahmin
@@ -687,7 +809,14 @@ with sekme_tahmin:
         if hazir:
             girdi = pd.DataFrame([[ram, hafiza, batarya, islemci, yenileme, kamera, cozunurluk, ekran, int(g5), sarj]],
                                  columns=OZELLIKLER)
-            olas = model.predict_proba(girdi)[0]
+            # Model seçici: aynı telefon için farklı algoritmaların tahminine bakılabiliyor
+            if st.session_state.get("t_algo") not in MODELLER:
+                st.session_state["t_algo"] = "Random Forest"
+            algo = st.segmented_control("🤖 Tahmini yapan model", list(MODELLER), key="t_algo",
+                                        help="Analizde karşılaştırdığımız modellerden birini seç. Hepsi aynı 10 özellikle "
+                                             "ve aynı veriyle eğitildi.") or "Random Forest"
+            secili_model, secili_dogruluk = MODELLER[algo]
+            olas = secili_model.predict_proba(girdi)[0]
             sinif = int(olas.argmax())
             ad, ikon, renk = SEGMENTLER[sinif]
             cubuklar = "".join(
@@ -704,13 +833,48 @@ with sekme_tahmin:
                 f'<div class="sonuc" id="tahmin-sonucu" style="--renk:{renk}">'
                 f'<div class="ust">Tahmin edilen segment</div>'
                 f'<div class="ana">{ikon} {ad}</div>'
-                f'<div class="guven">Model güveni: %{olas[sinif] * 100:.0f}</div>'
+                f'<div class="guven">{algo} güveni: %{olas[sinif] * 100:.0f}</div>'
                 f'<div class="fiyat">{segment_araligi(sinif)}</div>'
                 f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>{gercek}'
                 f'{fiyat_cetveli(olas, gercek_fiyat)}'
                 f'<div style="margin-top:.6rem">{cubuklar}</div>'
-                f'{neden_bu_segment(girdi, sinif)}</div>', unsafe_allow_html=True)
+                f'{neden_bu_segment(girdi, sinif, secili_model)}</div>', unsafe_allow_html=True)
             tahmin_imzasi = tuple(girdi.iloc[0].round(3))
+
+            # Üç model aynı telefon için ne diyor?
+            satirlar = ""
+            for ad_m, (mdl, dog) in MODELLER.items():
+                o = mdl.predict_proba(girdi)[0]
+                s = int(o.argmax())
+                satirlar += (f'<tr{" class=secili" if ad_m == algo else ""}><td>{ad_m}</td>'
+                             f'<td style="color:{SEGMENTLER[s][2]};font-weight:800">{SEGMENTLER[s][1]} {SEGMENTLER[s][0]}</td>'
+                             f'<td>%{o[s] * 100:.0f}</td><td>%{dog * 100:.0f}</td></tr>')
+            st.markdown('<div class="bolum" style="margin-top:1rem">🤖 Üç model ne diyor?</div>'
+                        '<table class="tablo model-tablo"><tr><th>Model</th><th>Tahmin</th><th>Güven</th>'
+                        f'<th>Test doğruluğu</th></tr>{satirlar}</table>', unsafe_allow_html=True)
+
+            # Paylaşma linki ve PDF rapor
+            baslik = (f"{secili} ({gb(ram)} RAM + {gb(hafiza)})" if secili else
+                      f"Özellikleri seçilen telefon ({gb(ram)} RAM + {gb(hafiza)})")
+            ozellik_listesi = [("RAM", gb(ram)), ("Depolama", gb(hafiza)), ("Batarya", f"{batarya:.0f} mAh"),
+                               ("İşlemci hızı", f"{islemci:g} GHz"), ("Hızlı şarj", sarj_yazisi(sarj)),
+                               ("Ekran boyutu", f"{ekran:g} inç"), ("Ekran yüksekliği", f"{cozunurluk:.0f} piksel"),
+                               ("Yenileme hızı", f"{yenileme} Hz"), ("Ana kamera", f"{kamera:g} MP"),
+                               ("5G", "Var" if g5 else "Yok")]
+            p1, p2 = st.columns(2)
+            p1.download_button("📄 PDF olarak indir",
+                               data=tahmin_pdf(baslik, ozellik_listesi, algo, secili_dogruluk, olas, sinif,
+                                               gercek_fiyat, neden_verisi(girdi, sinif, secili_model)),
+                               file_name=f"TeknoTahmin_{(secili or 'tahmin').replace(' ', '_')}.pdf",
+                               mime="application/pdf", use_container_width=True)
+            if secili:
+                with p2.popover("🔗 Paylaş", use_container_width=True):
+                    taban_url = (st.context.url or "https://teknotahmin-0iji.onrender.com/").split("?")[0]
+                    link = (f"{taban_url}?tel={quote(secili)}&ram={ram:g}&depo={hafiza:g}&model={quote(algo)}")
+                    st.caption("Bu linki açan kişi aynı telefonu ve aynı tahmini görür:")
+                    st.code(link, language=None, wrap_lines=True)
+            else:
+                p2.caption("Paylaşma linki, listeden bir telefon modeli seçildiğinde açılıyor.")
 
         # 2) Yazılan isme ve seçilen özelliklere uyan gerçek telefonlar (görselli kartlar, anında süzülür)
         girilen = {k: v for k, v in {"ram_capacity": ram, "internal_memory": hafiza, "battery_capacity": batarya,
@@ -970,7 +1134,90 @@ with sekme_karsilastir:
         st.caption("Her eksen, o özelliğin 970 telefon arasındaki yerini gösterir: merkez en düşük, dış çember en yüksek.")
 
 # ------------------------------------------------------------
-# 4) Proje hakkında
+# 4) Bütçeye göre öneri
+# ------------------------------------------------------------
+# Önceliğe göre özellik ağırlıkları. Her özellik, 970 telefon arasındaki yerine (0-1) göre puanlanıyor.
+ONCELIKLER = {
+    "⚖️ Dengeli": {"processor_speed": .25, "ram_capacity": .2, "internal_memory": .15, "primary_camera_rear": .1,
+                   "battery_capacity": .1, "refresh_rate": .1, "fast_charging": .1},
+    "🚀 Performans": {"processor_speed": .45, "ram_capacity": .3, "refresh_rate": .15, "internal_memory": .1},
+    "📷 Kamera": {"primary_camera_rear": .5, "primary_camera_front": .2, "processor_speed": .15, "ram_capacity": .15},
+    "🔋 Batarya": {"battery_capacity": .55, "fast_charging": .3, "processor_speed": .15},
+    "💾 Depolama": {"internal_memory": .55, "ram_capacity": .25, "processor_speed": .2},
+}
+
+
+@st.cache_data
+def ozellik_yuzdelikleri():
+    # Her özelliğin 970 telefon arasındaki yeri (0 = en düşük, 1 = en yüksek)
+    tablo, _ = veri_yukle()
+    sutunlar = {s for agirlik in ONCELIKLER.values() for s in agirlik}
+    return pd.DataFrame({s: tablo[s].rank(pct=True) for s in sutunlar})
+
+
+def butce_ayarla(miktar):
+    st.session_state["b_butce"] = miktar
+
+
+with sekme_butce:
+    st.markdown('<div class="baslik">Bütçeme göre en iyi telefonlar</div>'
+                '<div class="alt">Bütçeni ve senin için en önemli şeyi seç, o fiyata kadar olan gerçek telefonları '
+                'özelliklerine göre puanlayıp sıralayalım.</div>', unsafe_allow_html=True)
+    b1, b2 = st.columns([1, 1.4], gap="large")
+    with b1:
+        butce = st.number_input("💰 Bütçen (TL)", min_value=1000, max_value=100000, value=None, step=1000,
+                                placeholder="ör. 15000", key="b_butce")
+        hk = st.columns(5)
+        for kol, miktar in zip(hk, [7500, 10000, 15000, 20000, 30000]):
+            kol.button(f"{miktar / 1000:g} bin".replace(".", ","), key=f"b_{miktar}", on_click=butce_ayarla, args=(miktar,),
+                       use_container_width=True)
+    with b2:
+        oncelik = st.segmented_control("🎯 Senin için en önemli olan", list(ONCELIKLER), default="⚖️ Dengeli",
+                                       key="b_oncelik") or "⚖️ Dengeli"
+        e1, e2 = st.columns(2)
+        b_5g = e1.checkbox("5G olsun", key="b_5g")
+        b_marka = e2.multiselect("Marka (isteğe bağlı)", df["marka"].value_counts().index.tolist(),
+                                 placeholder="Tüm markalar", key="b_marka")
+
+    if butce is None:
+        st.markdown('<div class="sonuc" style="--renk:#a78bfa;margin-top:1rem"><div class="ana">💰 Bütçeni seç</div>'
+                    '<div class="aralik">Yukarıya bütçeni yaz ya da hazır bütçelerden birine bas. Önceliğini de seçersen '
+                    'o bütçedeki en iyi telefonları puanlarıyla sıralarız.</div></div>', unsafe_allow_html=True)
+    else:
+        aday = df[df["price"] * KUR <= butce]
+        if b_5g:
+            aday = aday[aday["5G_or_not"] == 1]
+        if b_marka:
+            aday = aday[aday["marka"].isin(b_marka)]
+        if aday.empty:
+            st.info("Bu bütçede uyan telefon yok. Bütçeyi biraz artırmayı ya da filtreleri kaldırmayı dene.")
+        else:
+            agirlik = ONCELIKLER[oncelik]
+            yuzdelik = ozellik_yuzdelikleri().loc[aday.index]
+            puan = sum(yuzdelik[s] * w for s, w in agirlik.items()) * 100
+            aday = aday.assign(puan=puan.round(0)).sort_values(["puan", "price"], ascending=[False, True])
+            st.markdown(f'<div class="alt" style="margin-top:.8rem"><b>{len(aday)}</b> telefon bu bütçeye uyuyor. '
+                        f'{oncelik.split(" ", 1)[1]} önceliğine göre en iyi 6 tanesi:</div>', unsafe_allow_html=True)
+            kartlar = []
+            for r in aday.head(6).itertuples():
+                guclu = sorted(agirlik, key=lambda s: -yuzdelik.loc[r.Index, s])[:2]
+                neden = " · ".join(f"{OZELLIK_ADI[s][0]} {OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}"
+                                   for s in guclu)
+                firsat = ('<span class="firsat">🔥 Fiyatına göre güçlü: model daha üst segment diyor</span>'
+                          if r.tahmin > r.segment else "")
+                # Katalog kartına puan rozeti ve "en güçlü yanları" satırı ekleniyor
+                html = kart_html(r)
+                html = html[:-len("</div>")] + f'<div class="butce-neden">En güçlü yanları: {neden}</div>{firsat}</div>'
+                html = html.replace('style="--renk:', 'style="padding-top:2.2rem;--renk:', 1)
+                html = html.replace('<div class="ust">', f'<span class="butce-puan">{r.puan:.0f}/100</span><div class="ust">', 1)
+                kartlar.append(html)
+            st.markdown(f'<div class="izgara">{"".join(kartlar)}</div>', unsafe_allow_html=True)
+            st.caption("Puan: seçtiğin önceliğe göre ağırlıklandırılmış özelliklerin, 970 telefon arasındaki yerinden "
+                       "hesaplanıyor (100 = o özelliklerde en iyiler). \"Fiyatına göre güçlü\" rozeti, modelin "
+                       "telefonun donanımına bakıp gerçek fiyatından daha üst bir segment tahmin ettiği telefonlarda çıkıyor.")
+
+# ------------------------------------------------------------
+# 5) Proje hakkında
 # ------------------------------------------------------------
 with sekme_hakkinda:
     st.markdown('<div class="baslik">Proje Hakkında</div>', unsafe_allow_html=True)

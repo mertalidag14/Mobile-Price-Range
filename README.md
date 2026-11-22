@@ -97,7 +97,7 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 
 | Üye | Ne yapıyor? |
 | :--- | :--- |
-| **Mert Ali Dağ** | **Kodlama, modeller ve web sitesi.** Veri ön işleme adımlarını kuruyor, KNN ve Random Forest kodlarını yazıyor, hiperparametre ayarlarını yapıyor ve model sonuçlarını yorumluyor. XGBoost/LightGBM karşılaştırmasını, cross-validation'ı ve hata analizini ekliyor. Projeyi 980 gerçek telefonluk veri setine taşıyıp bütün analizi bu veriyle tekrarlıyor (v2) ve gerçek veride ters girilmiş ekran çözünürlüklerini düzeltiyor. **TeknoTahmin** sitesini (Streamlit, HTML/CSS) tasarlayıp kodluyor: telefon adıyla arama, hızlı deneme butonları, "Neden bu segment?" açıklaması, fiyat cetveli, katalog, filtreler, karşılaştırma ve radar grafik. Siteyi Docker ile paketleyip Render'da yayınlıyor. GitHub deposunu, README'yi, UML diyagramlarını ve kanban tablosunu düzenliyor. |
+| **Mert Ali Dağ** | **Kodlama, modeller ve web sitesi.** Veri ön işleme adımlarını kuruyor, KNN ve Random Forest kodlarını yazıyor, hiperparametre ayarlarını yapıyor ve model sonuçlarını yorumluyor. XGBoost/LightGBM karşılaştırmasını, cross-validation'ı ve hata analizini ekliyor. Projeyi 980 gerçek telefonluk veri setine taşıyıp bütün analizi bu veriyle tekrarlıyor (v2) ve gerçek veride ters girilmiş ekran çözünürlüklerini düzeltiyor. **TeknoTahmin** sitesini (Streamlit, HTML/CSS) tasarlayıp kodluyor: telefon adıyla arama, hızlı deneme butonları, "Neden bu segment?" açıklaması, fiyat cetveli, model seçici, katalog, filtreler, karşılaştırma, radar grafik, bütçeye göre öneri, PDF rapor ve paylaşma linki. Siteyi Docker ile paketleyip Render'da yayınlıyor. GitHub deposunu, README'yi, UML diyagramlarını ve kanban tablosunu düzenliyor. |
 | **Gürkan Tural** | **Veri analizi.** Ham veriyi temizliyor, keşifçi veri analizini (EDA) yapıyor, donanım özellikleri arasındaki korelasyonları inceliyor ve bulguları anlaşılır grafiklerle gösteriyor. EDA notebook'unu (`v1_kaggle_analizi/veri_inceleme_eda.ipynb`) hazırlıyor: satır/sütun sayıları, veri tipleri ve özet istatistikler, fiyat segmentlerinin dağılımı, RAM, batarya ve ekran çözünürlüğünün fiyata etkisi ve korelasyon ısı haritası. Veri setinden örnek kayıtları (`Proje İçin Kullanılan Veri Seti Örneği`) derliyor ve veri setinin kaynağını belgeliyor. EDA'da çıkan sonuçlar (en belirleyici özelliklerin RAM, batarya ve çözünürlük olması) modelleme kısmına yön veriyor. |
 | **Efe Erdem** | **Araştırma ve raporlama.** Sınıflandırma problemine benzer çalışmaları ve farklı yaklaşımları araştırıyor, sonuçları raporluyor ve proje belgelerini hazırlıyor. Literatür araştırmasını (`Literatur_Arastirmasi.md`) yazıyor: Kaggle'daki benzer mobil fiyat çalışmalarını ve akademik makaleleri inceliyor, kullanılan algoritmaları (SVM, KNN, Logistic Regression, ANN/DNN, ağaç tabanlı modeller) ve başarı oranlarını bir tabloda karşılaştırıyor. Ön işleme adımlarını anlatan belgeyi (`Veri_On_Isleme.md`) ve veri kalitesi sorunlarını inceleyen hata ayıklama raporunu (`Veri_seti_hata_ayıklama_raporu.md`) yazıyor. Gerçek telefon verisi (v2) için de bir hata ayıklama raporu (`Yeni veri seti ayıklama raporu.md`) hazırlıyor. Belgelerin düzenli kalmasını ve sonuçların raporlanmasını sağlıyor. |
 
@@ -125,6 +125,7 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 - **Matplotlib & Seaborn:** Histogram, kutu grafikleri (boxplot), korelasyon ısı haritası (heatmap), confusion matrix, öğrenme eğrisi ve özellik önemi grafiklerini çizmek için.
 - **Scikit-learn:** KNN, Random Forest, `GridSearchCV`, `Pipeline`, ölçekleyiciler, cross-validation ve tüm değerlendirme metrikleri için.
 - **XGBoost & LightGBM:** Karşılaştırma için kullandığımız Gradient Boosting modelleri.
+- **fpdf2:** Sitede tahmin sonucunu PDF rapor olarak hazırlamak için (Türkçe karakterler için DejaVu fontuyla).
 - **Joblib:** Eğitilen en iyi modeli `.pkl` dosyası olarak kaydedip gerektiğinde tekrar yüklemek için.
 
 ### 🤖 Makine öğrenmesi algoritmaları
@@ -278,6 +279,7 @@ Mobile-Price-Range/
 | `requirements.txt` | Sitenin ihtiyaç duyduğu kütüphaneler |
 | `Dockerfile` | Sitenin Render'da Docker ile çalışması için kurulum dosyası |
 | `.streamlit/config.toml` | Tema ve hız ayarları |
+| `fontlar/` | PDF raporda Türkçe karakterler için DejaVu fontu (açık lisanslı) |
 
 ---
 
@@ -454,11 +456,12 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 
 ## 🌐 Web Sitesi: TeknoTahmin
 
-Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Streamlit sitesine çeviriyoruz (canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 4 sekme var:
+Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Streamlit sitesine çeviriyoruz (canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 5 sekme var:
 
 - **🔮 Fiyat Tahmini:** Telefonun adını yazıp (ör. "iPhone") modeli seçiyorsunuz, sabit özellikleri kendiliğinden geliyor. RAM ve depolamayı seçince fiyat segmenti, modelin ne kadar emin olduğu, segmentin gerçek fiyat aralığı ve o varyantın gerçek fiyatı çıkıyor. Telefonun adını hatırlamıyorsanız RAM, depolama, batarya, kamera, ekran, işlemci, şarj ve 5G'yi listeden seçebiliyorsunuz. Yazdığınız isme ve seçtiğiniz özelliklere uyan gerçek telefonlar sağda kartlar hâlinde hemen listeleniyor (ör. "iPhone" yazıp 4 GB RAM seçince sadece 4 GB RAM'li iPhone'lar çıkıyor). "Hızlı dene" butonlarıyla tek tıkla örnek bir telefon da deneyebiliyorsunuz.
 - **🛒 Telefon Kataloğu:** 970 gerçek telefon, gerçek fiyatları ve marka logolarıyla mağaza kartları hâlinde listeleniyor. Marka, segment, fiyat aralığı ve 5G filtreleri, sıralama, arama ve "modelin yanıldıkları" filtresi var. Kartlardaki "Karşılaştır" butonuyla iki telefonu seçip karşılaştırmaya geçebiliyorsunuz.
 - **⚖️ Karşılaştır:** İki gerçek telefonu yan yana koyuyor (gerçek segment ve modelin tahmini dahil) ve özelliklerini bir radar grafikte gösteriyor.
+- **💰 Bütçeme Göre:** Bütçeni ve önceliğini (dengeli, performans, kamera, batarya, depolama) seçince o fiyata kadar olan telefonları özelliklerine göre 100 üzerinden puanlayıp en iyi 6 tanesini gösteriyor.
 - **📊 Proje Hakkında:** Yöntem, ekip, model sonuçları ve modelin grafikleri (özellik önemi, karışıklık matrisi).
 
 ### ✨ Sitenin öne çıkan özellikleri
@@ -473,10 +476,14 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Tıklanabilir marka logoları:** Üstteki marka şeridinde bir logoya basınca katalog o markanın telefonlarıyla açılıyor.
 - **Katalogdan karşılaştırma:** Kartlardaki "⚖️ Karşılaştır" butonuyla iki telefon seçilince site kendiliğinden Karşılaştır sekmesine geçiyor.
 - **Radar grafik:** Karşılaştır sekmesinde iki telefonun RAM, depolama, batarya, şarj, işlemci, ekran, yenileme hızı ve kamerası, 970 telefon içindeki yerine göre üst üste çiziliyor.
+- **Model seçici:** Tahmini Random Forest, KNN ya da XGBoost'a yaptırabiliyorsun. Altındaki "Üç model ne diyor?" tablosunda aynı telefon için üç modelin tahmini, güveni ve test doğruluğu yan yana görünüyor. Analizde karşılaştırdığımız modeller sitede de canlı karşılaştırılabiliyor.
+- **Bütçeye göre öneri:** Bütçeni yazınca ya da hazır bütçelerden (7,5 / 10 / 15 / 20 / 30 bin TL) birine basınca, seçtiğin önceliğe göre en iyi telefonlar puanlarıyla ve "en güçlü yanlarıyla" listeleniyor. Modelin donanımına bakıp gerçek fiyatından daha üst bir segment tahmin ettiği telefonlarda "🔥 Fiyatına göre güçlü" rozeti çıkıyor. 5G ve marka filtresi de var.
+- **PDF rapor:** Tahmin sonucunu (özellikler, tahmin edilen segment, güven, olasılıklar ve "Neden bu segment?" açıklaması) tek tıkla PDF olarak indirebiliyorsun.
+- **Paylaşma linki:** Bir telefon modeli seçip tahmin aldıktan sonra "🔗 Paylaş" ile bir link çıkıyor. Bu linki açan kişi aynı telefonu, aynı RAM/depolamayı ve aynı modelin tahminini görüyor.
 - **Canlı model grafikleri:** Proje Hakkında sekmesindeki özellik önemi ve karışıklık matrisi, sitedeki modelden anlık olarak hesaplanıyor.
 - **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor.
 - **TL fiyatlar:** Veri setindeki Hindistan Rupisi fiyatları TL'ye çevrilerek gösteriliyor.
-**Model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu yaklaşık **%74**.
+**Modeller:** Sitede 10 donanım özelliğiyle eğitilmiş üç model var. Varsayılan model Random Forest (test doğruluğu yaklaşık **%74**). Model seçiciden XGBoost (yaklaşık **%75**) ya da KNN (k=5, yaklaşık **%69**) da seçilebiliyor.
 
 ### 📸 Ekran Görüntüleri
 
