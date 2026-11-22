@@ -4,12 +4,15 @@
 # Çalıştırma: streamlit run app.py
 # ============================================================
 import base64
+import math
 import random
 from pathlib import Path
+from urllib.parse import quote
 
 import pandas as pd
 import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
 from logolar import LOGOLAR
@@ -68,6 +71,13 @@ def arka_plan_svg():
     parcalar = ['<rect width="1600" height="1000" fill="url(#zemin)"/>']
     tanimlar = ['<linearGradient id="zemin" x1="0" y1="0" x2="1" y2="1">'
                 '<stop offset="0" stop-color="#0f1029"/><stop offset="1" stop-color="#1b0f2e"/></linearGradient>']
+    # Telefonların arkasında renkli ışık parlamaları
+    for j, (renk, x, y, yaricap) in enumerate([("#7c3aed", 260, 220, 420), ("#db2777", 1350, 260, 380),
+                                               ("#2563eb", 900, 820, 460), ("#06b6d4", 120, 860, 300),
+                                               ("#f59e0b", 1500, 900, 260)]):
+        tanimlar.append(f'<radialGradient id="isik{j}"><stop offset="0" stop-color="{renk}" stop-opacity=".55"/>'
+                        f'<stop offset="1" stop-color="{renk}" stop-opacity="0"/></radialGradient>')
+        parcalar.append(f'<circle cx="{x}" cy="{y}" r="{yaricap}" fill="url(#isik{j})"/>')
     for i in range(16):
         r1, r2 = renkler[i % len(renkler)]
         tanimlar.append(f'<linearGradient id="g{i}" x1="0" y1="0" x2="1" y2="1">'
@@ -91,6 +101,44 @@ def arka_plan_svg():
     return base64.b64encode(svg.encode()).decode()
 
 
+@st.cache_data
+def ikon_katmani_svg():
+    # Bulanık telefonların üstünde duran net, soluk küçük süsler: yıldız, kamera merceği, şimşek, sinyal, pil, çip
+    rnd = random.Random(21)
+    sekiller = {
+        "yildiz": lambda s: f'<path d="M0 {-s} Q0 0 {s} 0 Q0 0 0 {s} Q0 0 {-s} 0 Q0 0 0 {-s}Z" fill="#fff"/>',
+        "mercek": lambda s: (f'<circle r="{s}" fill="none" stroke="#fff" stroke-width="2"/>'
+                             f'<circle r="{s * .45}" fill="none" stroke="#fff" stroke-width="2"/>'),
+        "simsek": lambda s: (f'<path d="M{s * .15} {-s} L{-s * .55} {s * .1} L{-s * .05} {s * .1} L{-s * .2} {s} '
+                             f'L{s * .55} {-s * .15} L{s * .05} {-s * .15}Z" fill="none" stroke="#fff" stroke-width="2" '
+                             f'stroke-linejoin="round"/>'),
+        "sinyal": lambda s: "".join(f'<rect x="{-s + i * s * .7}" y="{s - (i + 1) * s * .5}" width="{s * .45}" '
+                                    f'height="{(i + 1) * s * .5}" rx="2" fill="#fff"/>' for i in range(3)),
+        "pil": lambda s: (f'<rect x="{-s}" y="{-s * .5}" width="{s * 1.8}" height="{s}" rx="4" fill="none" '
+                          f'stroke="#fff" stroke-width="2"/><rect x="{s * .85}" y="{-s * .2}" width="{s * .25}" '
+                          f'height="{s * .4}" rx="1" fill="#fff"/><rect x="{-s * .75}" y="{-s * .28}" '
+                          f'width="{s * .9}" height="{s * .56}" rx="2" fill="#fff"/>'),
+        "cip": lambda s: (f'<rect x="{-s * .6}" y="{-s * .6}" width="{s * 1.2}" height="{s * 1.2}" rx="4" fill="none" '
+                          f'stroke="#fff" stroke-width="2"/>'
+                          + "".join(f'<line x1="{k}" y1="{-s}" x2="{k}" y2="{-s * .6}" stroke="#fff" stroke-width="2"/>'
+                                    f'<line x1="{k}" y1="{s * .6}" x2="{k}" y2="{s}" stroke="#fff" stroke-width="2"/>'
+                                    for k in (-s * .3, 0, s * .3))),
+        "nokta": lambda s: f'<circle r="{s * .25}" fill="#fff"/>',
+    }
+    adlar = list(sekiller)
+    parcalar = []
+    for i in range(46):
+        ad = adlar[i % len(adlar)]
+        x, y = rnd.randint(20, 1580), rnd.randint(20, 980)
+        boyut = rnd.randint(9, 20) if ad != "nokta" else rnd.randint(8, 14)
+        saydam = rnd.uniform(.08, .2) if ad != "yildiz" else rnd.uniform(.18, .35)
+        parcalar.append(f'<g transform="translate({x},{y}) rotate({rnd.randint(-25, 25)})" opacity="{saydam:.2f}">'
+                        f'{sekiller[ad](boyut)}</g>')
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">'
+           f'{"".join(parcalar)}</svg>')
+    return base64.b64encode(svg.encode()).decode()
+
+
 def telefon_ikonu(renk, boyut=64):
     return (f'<svg width="{boyut * 0.55:.0f}" height="{boyut}" viewBox="0 0 55 100">'
             f'<rect x="2" y="2" width="51" height="96" rx="10" fill="#0b0b14" stroke="{renk}" stroke-width="3"/>'
@@ -105,22 +153,37 @@ st.markdown(f"""
 content: ""; position: fixed; inset: -60px; z-index: 0;
 background: url("data:image/svg+xml;base64,{arka_plan_svg()}") center / cover no-repeat;
 filter: blur(5px) saturate(1.2);
+animation: suzul 40s ease-in-out infinite alternate;
 }}
 .stApp::after {{
-content: ""; position: fixed; inset: 0; z-index: 0;
-background: radial-gradient(ellipse at 50% 40%, rgba(10,10,25,.2), rgba(10,10,25,.7));
+content: ""; position: fixed; inset: -30px; z-index: 0; pointer-events: none;
+background:
+  url("data:image/svg+xml;base64,{ikon_katmani_svg()}") center / cover no-repeat,
+  radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1.5px) 0 0 / 26px 26px,
+  radial-gradient(ellipse at 50% 40%, rgba(10,10,25,.2), rgba(10,10,25,.7));
+animation: yuzer 18s ease-in-out infinite alternate;
 }}
+@keyframes suzul {{ from {{ transform: translate(0, 0) scale(1); }} to {{ transform: translate(-30px, -20px) scale(1.06); }} }}
+@keyframes yuzer {{ from {{ transform: translateY(0); }} to {{ transform: translateY(-22px); }} }}
+.block-container::before {{
+content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+background: linear-gradient(135deg, rgba(167,139,250,.7), rgba(244,114,182,.25) 40%, rgba(96,165,250,.6));
+-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}}
+.logo {{ background-size: 200% auto !important; animation: parilti 6s linear infinite; }}
+@keyframes parilti {{ to {{ background-position: 200% center; }} }}
+@media (prefers-reduced-motion: reduce) {{ .stApp::before, .stApp::after, .logo {{ animation: none; }} }}
 [data-testid="stAppViewContainer"] {{ position: relative; z-index: 1; background: transparent; }}
 [data-testid="stHeader"] {{ background: transparent; }}
 .block-container {{
-max-width: 1150px; margin: 2.5rem auto; padding: 2rem 2.5rem 2rem !important;
+position: relative; max-width: 1150px; margin: 2.5rem auto; padding: 2rem 2.5rem 2rem !important;
 background: rgba(18, 18, 38, .6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
 border: 1px solid rgba(255,255,255,.12); border-radius: 28px; box-shadow: 0 30px 80px rgba(0,0,0,.45);
 }}
 .nav {{ display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .8rem;
 padding-bottom: 1rem; margin-bottom: 1.2rem; border-bottom: 1px solid rgba(255,255,255,.1); }}
 .logo {{ font-size: 1.6rem; font-weight: 900; letter-spacing: -.02em;
-background: linear-gradient(90deg, #c4b5fd, #f9a8d4, #93c5fd); -webkit-background-clip: text; background-clip: text; color: transparent; }}
+background: linear-gradient(90deg, #c4b5fd, #f9a8d4, #93c5fd, #c4b5fd); -webkit-background-clip: text; background-clip: text; color: transparent; }}
 .logo-alt {{ color: rgba(255,255,255,.6); font-size: .85rem; }}
 .cipler {{ display: flex; gap: .5rem; flex-wrap: wrap; }}
 .cip {{ padding: .3rem .8rem; border-radius: 999px; font-size: .82rem; color: #fff;
@@ -177,6 +240,37 @@ background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }}
 .mini-fiyat {{ font-weight: 800; color: #fff; font-size: .95rem; margin-top: .2rem; }}
 .mini-fiyat .rozet {{ font-size: .62rem; margin-left: .3rem; vertical-align: middle; }}
 .not {{ color: rgba(255,255,255,.5); font-size: .78rem; text-align: center; margin-top: 1.6rem; }}
+a.marka, a.marka:visited, a.marka:hover {{ color: #fff !important; text-decoration: none !important; cursor: pointer; transition: transform .15s, border-color .15s; }}
+[data-testid="stButtonGroup"] [role="radiogroup"] {{ flex-wrap: wrap; overflow: visible; }}
+a.marka:hover {{ transform: translateY(-2px); border-color: rgba(196,181,253,.7); }}
+.cetvel {{ margin: 1rem 0 .4rem; }}
+.cetvel .satir {{ position: relative; height: 1.25rem; }}
+.cetvel .isaret {{ position: absolute; transform: translateX(-50%); font-size: .75rem; font-weight: 800; color: #fff; white-space: nowrap; }}
+.cetvel .isaret.gercek {{ color: #34d399; }}
+.cetvel .serit {{ display: flex; height: 12px; border-radius: 99px; overflow: hidden; }}
+.cetvel .serit span {{ flex: 1; opacity: .9; }}
+.cetvel .sinirlar {{ position: relative; height: 1.3rem; margin-top: .25rem; }}
+.cetvel .sinirlar small {{ position: absolute; transform: translateX(-50%); color: rgba(255,255,255,.6); font-size: .7rem; white-space: nowrap; }}
+.neden {{ margin-top: 1rem; padding: .8rem 1rem; border-radius: 14px; background: rgba(0,0,0,.18); border: 1px solid rgba(255,255,255,.1); }}
+.neden-baslik {{ font-weight: 800; color: #fff; margin-bottom: .3rem; }}
+.neden ul {{ list-style: none; padding: 0; margin: 0; }}
+.neden li {{ display: flex; justify-content: space-between; gap: .6rem; padding: .3rem 0; color: rgba(255,255,255,.88); font-size: .9rem;
+border-bottom: 1px dashed rgba(255,255,255,.08); }}
+.neden li:last-child {{ border-bottom: 0; }}
+.neden li i {{ color: rgba(255,255,255,.55); font-style: normal; }}
+.neden .etki {{ color: var(--renk); font-weight: 800; white-space: nowrap; }}
+.neden-not {{ color: rgba(255,255,255,.5); font-size: .72rem; margin-top: .4rem; }}
+.radar {{ display: flex; flex-direction: column; align-items: center; }}
+.lejant {{ display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center; color: #fff; font-size: .9rem; margin-top: .3rem; }}
+.lejant i {{ display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; }}
+.onem {{ display: grid; grid-template-columns: 120px 1fr 48px; gap: .6rem; align-items: center; margin: .35rem 0; color: #fff; font-size: .88rem; }}
+.onem .iz {{ height: 10px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }}
+.onem .dolu {{ height: 100%; border-radius: 99px; background: linear-gradient(90deg, #a78bfa, #f472b6); }}
+.onem .deger {{ text-align: right; color: rgba(255,255,255,.75); font-variant-numeric: tabular-nums; }}
+.km {{ border-collapse: separate; border-spacing: 4px; color: #fff; font-size: .85rem; margin: 0 auto; }}
+.km td, .km th {{ text-align: center; padding: .45rem .5rem; border-radius: 8px; min-width: 58px; }}
+.km th {{ color: rgba(255,255,255,.65); font-weight: 600; font-size: .75rem; }}
+[class*="st-key-gizlijs"] {{ display: none !important; }}
 .stTabs [data-baseweb="tab-list"] {{ gap: .4rem; }}
 .stTabs [data-baseweb="tab"] {{ background: rgba(255,255,255,.06); border-radius: 12px; padding: .4rem 1rem; }}
 .stTabs [aria-selected="true"] {{ background: rgba(167,139,250,.25); }}
@@ -222,13 +316,14 @@ def model_egit():
                                               random_state=42, stratify=df["segment"])
     test_model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(X_tr, y_tr)
     dogruluk = test_model.score(X_te, y_te)
+    karisiklik = confusion_matrix(y_te, test_model.predict(X_te), labels=range(4))
     # Sitede kullanılan model tüm veriyle eğitiliyor
     model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(df[OZELLIKLER], df["segment"])
-    return model, dogruluk
+    return model, dogruluk, karisiklik
 
 
 df, SINIRLAR = veri_yukle()
-model, DOGRULUK = model_egit()
+model, DOGRULUK, KARISIKLIK = model_egit()
 df["tahmin"] = model.predict(df[OZELLIKLER])
 
 
@@ -296,6 +391,132 @@ def sarj_yazisi(watt):
     return f"{watt:.0f} W şarj" if watt else "standart şarj"
 
 
+# Özelliklerin sitede görünen adları: (ikon, ad, değer yazımı)
+OZELLIK_ADI = {
+    "ram_capacity": ("🧠", "RAM", lambda v: f"{v:g} GB"),
+    "internal_memory": ("💾", "Depolama", gb_yaz),
+    "battery_capacity": ("🔋", "Batarya", lambda v: f"{v:.0f} mAh"),
+    "processor_speed": ("⚙️", "İşlemci", lambda v: f"{v:g} GHz"),
+    "refresh_rate": ("🔄", "Yenileme hızı", lambda v: f"{v:g} Hz"),
+    "primary_camera_rear": ("📷", "Ana kamera", lambda v: f"{v:g} MP"),
+    "resolution_height": ("📐", "Çözünürlük", lambda v: f"{v:.0f} piksel"),
+    "screen_size": ("🖥️", "Ekran", lambda v: f"{v:g}\""),
+    "5G_or_not": ("📶", "5G", lambda v: "var" if v else "yok"),
+    "fast_charging": ("⚡", "Hızlı şarj", lambda v: f"{v:.0f} W" if v else "yok"),
+}
+
+
+def yuzdelik(sutun, deger):
+    # Değerin veri setindeki yeri (0 = en düşük, 1 = en yüksek)
+    s = df[sutun]
+    return float((s < deger).mean() + (s == deger).mean() / 2)
+
+
+def seviye_yazisi(sutun, deger):
+    if sutun == "5G_or_not":
+        return ""
+    p = yuzdelik(sutun, deger)
+    for esik, yazi in [(.8, "çok yüksek"), (.6, "yüksek"), (.4, "ortalama"), (.2, "düşük")]:
+        if p >= esik:
+            return yazi
+    return "çok düşük"
+
+
+def neden_bu_segment(girdi, sinif):
+    # Her özelliği tek tek veri setinin ortancasıyla değiştirip modelin bu segmente olan güveninin
+    # ne kadar düştüğüne bakar. En çok düşüren özellikler, tahmini en çok destekleyenlerdir.
+    temel = model.predict_proba(girdi)[0][sinif]
+    denemeler = pd.concat([girdi] * len(OZELLIKLER), ignore_index=True)
+    for i, sutun in enumerate(OZELLIKLER):
+        denemeler.loc[i, sutun] = df[sutun].median()
+    etkiler = temel - model.predict_proba(denemeler)[:, sinif]
+    sirali = sorted(zip(OZELLIKLER, etkiler), key=lambda x: -x[1])
+    satirlar = []
+    for sutun, etki in sirali[:3]:
+        if etki < 0.01:
+            break
+        ikon, ad, yaz = OZELLIK_ADI[sutun]
+        deger = girdi.iloc[0][sutun]
+        seviye = seviye_yazisi(sutun, deger)
+        satirlar.append(f'<li><span>{ikon} <b>{ad}</b> {yaz(deger)}'
+                        + (f' <i>({seviye})</i>' if seviye else '')
+                        + f'</span><span class="etki">+%{etki * 100:.0f}</span></li>')
+    if not satirlar:
+        return ""
+    return ('<div class="neden"><div class="neden-baslik">🧐 Neden bu segment?</div><ul>' + "".join(satirlar)
+            + '</ul><div class="neden-not">Sağdaki sayı: bu özellik ortalama bir telefondaki gibi olsaydı, modelin '
+              'bu segmente olan güveni kaç puan düşerdi.</div></div>')
+
+
+def fiyat_cetveli(olas, gercek_fiyat=None):
+    # 4 segmentli renkli çubuk: tahminin ve (varsa) gerçek fiyatın yeri
+    beklenen = sum(i * p for i, p in enumerate(olas))
+    tahmin_yeri = (beklenen + .5) / 4 * 100
+    serit = "".join(f'<span style="background:{SEGMENTLER[i][2]}"></span>' for i in range(4))
+    sinirlar = "".join(f'<small style="left:{k * 25}%">{tl(SINIRLAR[k])}</small>' for k in (1, 2, 3))
+    gercek = ""
+    if gercek_fiyat is not None:
+        gercek_yeri = min(max(yuzdelik("price", gercek_fiyat) * 100, 2), 98)
+        gercek = (f'<div class="satir"><div class="isaret gercek" style="left:{gercek_yeri:.1f}%">'
+                  f'Gerçek fiyat ▼</div></div>')
+    return (f'<div class="cetvel"><div class="satir"><div class="isaret" style="left:{min(max(tahmin_yeri, 6), 94):.1f}%">'
+            f'Tahmin ▼</div></div>{gercek}<div class="serit">{serit}</div>'
+            f'<div class="sinirlar"><small style="left:0;transform:none">Ucuz</small>{sinirlar}'
+            f'<small style="left:100%;transform:translateX(-100%)">Pahalı</small></div></div>')
+
+
+RADAR_EKSENLERI = [("RAM", "ram_capacity"), ("Depolama", "internal_memory"), ("Batarya", "battery_capacity"),
+                   ("Şarj", "fast_charging"), ("İşlemci", "processor_speed"), ("Ekran", "screen_size"),
+                   ("Yenileme", "refresh_rate"), ("Kamera", "primary_camera_rear")]
+
+
+def radar_svg(telefonlar):
+    # telefonlar: [(isim, satır, renk)]. Her eksen, özelliğin veri setindeki yeri (0-1).
+    m, r, n = 210, 140, len(RADAR_EKSENLERI)
+
+    def nokta(i, oran):
+        aci = -math.pi / 2 + 2 * math.pi * i / n
+        return m + r * oran * math.cos(aci), m + r * oran * math.sin(aci)
+
+    parca = []
+    for halka in (.25, .5, .75, 1):
+        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in (nokta(i, halka) for i in range(n)))
+        parca.append(f'<polygon points="{pts}" fill="none" stroke="rgba(255,255,255,.15)"/>')
+    for i, (ad, _) in enumerate(RADAR_EKSENLERI):
+        x, y = nokta(i, 1)
+        parca.append(f'<line x1="{m}" y1="{m}" x2="{x:.1f}" y2="{y:.1f}" stroke="rgba(255,255,255,.12)"/>')
+        lx, ly = nokta(i, 1.17)
+        parca.append(f'<text x="{lx:.1f}" y="{ly:.1f}" fill="rgba(255,255,255,.8)" font-size="13" '
+                     f'text-anchor="middle" dominant-baseline="middle">{ad}</text>')
+    for _, satir, renk in telefonlar:
+        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in
+                       (nokta(i, max(yuzdelik(s, satir[s]), .04)) for i, (_, s) in enumerate(RADAR_EKSENLERI)))
+        parca.append(f'<polygon points="{pts}" fill="{renk}" fill-opacity=".22" stroke="{renk}" stroke-width="2.5"/>')
+    lejant = "".join(f'<span><i style="background:{renk}"></i>{isim}</span>' for isim, _, renk in telefonlar)
+    return (f'<div class="radar"><svg viewBox="0 0 420 420" width="100%" style="max-width:420px">{"".join(parca)}'
+            f'</svg><div class="lejant">{lejant}</div></div>')
+
+
+def js_calistir(kod):
+    # Sayfaya küçük bir JavaScript ekler (sekme değiştirme, kaydırma). Yalnızca kendi yazdığımız sabit kod çalışır.
+    sayac = st.session_state.get("_js_sayac", 0) + 1
+    st.session_state["_js_sayac"] = sayac
+    with st.container(key=f"gizlijs_{sayac}"):
+        # Not: Streamlit'in HTML temizleyicisi "<" ardından harf/rakam gelen betikleri siler, kodda "a < b" gibi boşluk bırakılmalı
+        # Her betik kendi kapsamında çalışır (aynı değişken adları çakışmasın)
+        st.html(f"<script>(()=>{{{kod}}})();</script>", unsafe_allow_javascript=True)
+
+
+def sekmeye_gec(sira):
+    js_calistir("let d=0;const f=()=>{const t=document.querySelectorAll('[role=\"tab\"]');"
+                f"if(t.length>{sira}){{const e=t[{sira}];const o={{bubbles:true,cancelable:true,pointerId:1,"
+                "pointerType:'mouse',isPrimary:true,button:0};"
+                "e.dispatchEvent(new PointerEvent('pointerdown',o));e.dispatchEvent(new MouseEvent('mousedown',o));"
+                "e.dispatchEvent(new PointerEvent('pointerup',o));e.dispatchEvent(new MouseEvent('mouseup',o));"
+                "e.click();e.scrollIntoView({behavior:'smooth',block:'center'});}"
+                "else if(d++ < 40)setTimeout(f,100)};f();")
+
+
 # ------------------------------------------------------------
 # Üst menü ve marka şeridi
 # ------------------------------------------------------------
@@ -309,11 +530,21 @@ st.markdown(f"""
 
 
 def marka_cipi(marka, adet):
+    # Tıklanınca katalog o markaya göre süzülerek açılır (?marka=... ile)
     bilgi = LOGOLAR.get(marka.lower())
+    link = f'href="?marka={quote(marka)}" target="_self"'
     if bilgi and bilgi[5]:  # yazı logosu: logo ismi zaten gösteriyor
-        return f'<span class="marka" title="{marka}">{logo(marka, 15)}<small>{adet}</small></span>'
-    return f'<span class="marka">{logo(marka)}{marka}<small>{adet}</small></span>'
+        return f'<a class="marka" {link} title="{marka} telefonlarını göster">{logo(marka, 15)}<small>{adet}</small></a>'
+    return f'<a class="marka" {link} title="{marka} telefonlarını göster">{logo(marka)}{marka}<small>{adet}</small></a>'
 
+
+# Marka logosuna tıklanarak gelindiyse katalogu o markayla aç
+_tiklanan_marka = st.query_params.get("marka")
+if _tiklanan_marka:
+    if _tiklanan_marka in set(df["marka"]):
+        st.session_state["k_marka"] = [_tiklanan_marka]
+        st.session_state["_sekmeye_git"] = 1
+    del st.query_params["marka"]
 
 ilk_markalar = df["marka"].value_counts().head(12)
 st.markdown('<div class="markalar"><span class="etiket">Popüler markalar</span>'
@@ -337,18 +568,34 @@ with sekme_tahmin:
 
     sol, sag = st.columns([1.1, 1], gap="large")
     gercek_fiyat = None
+    tahmin_imzasi = None
     with sol:
         modeller = sorted(df["temel_model"].unique(), key=str.lower)
         isim_arama = st.text_input("📱 Telefon adı (biliyorsan yaz, bilmiyorsan boş bırak)",
-                                   placeholder="ör. iPhone, Galaxy S23, Redmi Note")
+                                   placeholder="ör. iPhone, Galaxy S23, Redmi Note", key="t_isim")
+        # Hızlı deneme: tek tıkla modeli ve en ucuz varyantını seçip tahmini gösterir
+        ornekler = [m for m in ["Apple iPhone 13", "Samsung Galaxy S23", "Xiaomi Redmi Note 12",
+                                "Google Pixel 7 5G", "OnePlus 11 5G", "Samsung Galaxy A14 5G"] if m in set(modeller)]
+
+        def ornek_sec():
+            secilen = st.session_state.get("t_ornek")
+            if not secilen:
+                return
+            v = df[df["temel_model"] == secilen].sort_values("price").iloc[0]
+            st.session_state.update(t_isim=secilen, t_model=secilen, t_ram=int(v.ram_capacity),
+                                    t_depo=int(v.internal_memory), t_ornek=None)
+
+        st.pills("⚡ Hızlı dene", ornekler, key="t_ornek", on_change=ornek_sec)
         kelimeler = isim_arama.lower().split()
         eslesen_modeller = [m for m in modeller if all(k in m.lower() for k in kelimeler)] if kelimeler else []
+        if st.session_state.get("t_model") not in eslesen_modeller:
+            st.session_state.pop("t_model", None)
         secili = None
         if kelimeler and not eslesen_modeller:
             st.warning("Bu isimde telefon bulunamadı. Yazımı kontrol et ya da sadece markayı yaz (ör. Samsung).")
         elif eslesen_modeller:
             secili = st.selectbox(f"Hangi model? ({len(eslesen_modeller)} model bulundu, sağda görselleriyle listeleniyor)",
-                                  eslesen_modeller, index=0 if len(eslesen_modeller) == 1 else None,
+                                  eslesen_modeller, index=0 if len(eslesen_modeller) == 1 else None, key="t_model",
                                   placeholder="Modeli seç ya da aşağıdan özellik seçerek listeyi daralt")
         varyantlar = df[df["temel_model"] == secili] if secili else df
         # Seçenekler sabit tutuluyor: model seçilince yapılan RAM/depolama seçimi sıfırlanmasın
@@ -431,13 +678,16 @@ with sekme_tahmin:
                 gercek = (f'<div class="aralik" style="margin-top:.5rem">🏷️ Seçtiğin varyantın gerçek fiyatı: '
                           f'<b>{tl(gercek_fiyat)}</b> (gerçek segmenti: {SEGMENTLER[gercek_seg][0]})</div>')
             st.markdown(
-                f'<div class="sonuc" style="--renk:{renk}">'
+                f'<div class="sonuc" id="tahmin-sonucu" style="--renk:{renk}">'
                 f'<div class="ust">Tahmin edilen segment</div>'
                 f'<div class="ana">{ikon} {ad}</div>'
                 f'<div class="guven">Model güveni: %{olas[sinif] * 100:.0f}</div>'
                 f'<div class="fiyat">{segment_araligi(sinif)}</div>'
                 f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>{gercek}'
-                f'<div style="margin-top:1rem">{cubuklar}</div></div>', unsafe_allow_html=True)
+                f'{fiyat_cetveli(olas, gercek_fiyat)}'
+                f'<div style="margin-top:.6rem">{cubuklar}</div>'
+                f'{neden_bu_segment(girdi, sinif)}</div>', unsafe_allow_html=True)
+            tahmin_imzasi = tuple(girdi.iloc[0].round(3))
 
         # 2) Yazılan isme ve seçilen özelliklere uyan gerçek telefonlar (görselli kartlar, anında süzülür)
         girilen = {k: v for k, v in {"ram_capacity": ram, "internal_memory": hafiza, "battery_capacity": batarya,
@@ -541,7 +791,7 @@ with sekme_katalog:
             st.markdown('<div class="bolum">🔎 Filtrele</div>', unsafe_allow_html=True)
             arama = st.text_input("Model ara", placeholder="ör. iPhone 14")
             tum_markalar = df["marka"].value_counts().index.tolist()
-            marka_sec = st.multiselect("Marka", tum_markalar, placeholder="Tüm markalar")
+            marka_sec = st.multiselect("Marka", tum_markalar, placeholder="Tüm markalar", key="k_marka")
             segment_sec = st.multiselect("Fiyat segmenti", list(SEGMENTLER), placeholder="Tüm segmentler",
                                          format_func=lambda s: f"{SEGMENTLER[s][1]} {SEGMENTLER[s][0]}")
             ram_sec = st.multiselect("RAM", sorted(df["ram_capacity"].unique()), placeholder="Tümü",
@@ -611,11 +861,32 @@ with sekme_katalog:
         toplam_sayfa = max(1, -(-len(liste) // SAYFA_BOYUTU))
         sayfa = b3.number_input(f"Sayfa (/{toplam_sayfa})", 1, toplam_sayfa, 1)
         gosterilen = liste.iloc[(sayfa - 1) * SAYFA_BOYUTU: sayfa * SAYFA_BOYUTU]
+
+        def karsilastirmaya_ekle(sira):
+            secilenler = [s for s in st.session_state.get("kars", []) if s != sira] + [sira]
+            if len(secilenler) == 2:
+                st.session_state.update(k1=secilenler[0], k2=secilenler[1], kars=[], _sekmeye_git=2)
+            else:
+                st.session_state["kars"] = secilenler
+
+        bekleyen = st.session_state.get("kars", [])
+        if bekleyen:
+            u1, u2 = st.columns([4, 1])
+            u1.info(f"⚖️ **{df.iloc[bekleyen[0]].isim}** seçildi. Karşılaştırmak için bir telefon daha seç.")
+            u2.button("Vazgeç", on_click=lambda: st.session_state.update(kars=[]), use_container_width=True)
         if gosterilen.empty:
             st.info("Bu filtrelere uyan telefon yok. Filtreleri gevşetmeyi dene.")
         else:
-            st.markdown(f'<div class="izgara">{"".join(kart_html(r) for r in gosterilen.itertuples())}</div>',
-                        unsafe_allow_html=True)
+            satirlar_listesi = list(gosterilen.itertuples())
+            for bas in range(0, len(satirlar_listesi), 3):
+                kolonlar = st.columns(3)
+                for kol, r in zip(kolonlar, satirlar_listesi[bas:bas + 3]):
+                    with kol:
+                        st.markdown(kart_html(r), unsafe_allow_html=True)
+                        secili_mi = r.Index in bekleyen
+                        st.button("✓ Seçildi" if secili_mi else "⚖️ Karşılaştır", key=f"kb_{r.Index}",
+                                  on_click=karsilastirmaya_ekle, args=(r.Index,), disabled=secili_mi,
+                                  use_container_width=True)
 
 # ------------------------------------------------------------
 # 3) Karşılaştırma
@@ -629,11 +900,12 @@ with sekme_karsilastir:
     def varsayilan(aranan):
         return next((i for i, ad in enumerate(isimler) if aranan.lower() in ad.lower()), 0)
 
+    # Varsayılanlar; katalogdan "Karşılaştır" ile gelindiyse seçilen telefonlar kullanılır
+    st.session_state.setdefault("k1", varsayilan("iPhone 14"))
+    st.session_state.setdefault("k2", varsayilan("Galaxy S23"))
     k1, k2 = st.columns(2)
-    a = df.iloc[k1.selectbox("1. telefon", range(len(isimler)), index=varsayilan("iPhone 14"),
-                             format_func=lambda i: isimler[i])]
-    b = df.iloc[k2.selectbox("2. telefon", range(len(isimler)), index=varsayilan("Galaxy S23"),
-                             format_func=lambda i: isimler[i])]
+    a = df.iloc[k1.selectbox("1. telefon", range(len(isimler)), key="k1", format_func=lambda i: isimler[i])]
+    b = df.iloc[k2.selectbox("2. telefon", range(len(isimler)), key="k2", format_func=lambda i: isimler[i])]
 
     # (etiket, sütun, birim, büyük olan mı iyi?)
     satirlar = [("Fiyat", "price", "", False), ("RAM", "ram_capacity", " GB", True),
@@ -653,9 +925,16 @@ with sekme_karsilastir:
         f'<tr><td>{et}</td><td>{SEGMENTLER[a[s]][1]} {SEGMENTLER[a[s]][0]}</td>'
         f'<td>{SEGMENTLER[b[s]][1]} {SEGMENTLER[b[s]][0]}</td></tr>'
         for et, s in [("Gerçek segment", "segment"), ("Modelin tahmini", "tahmin")])
-    st.markdown(f'<table class="tablo"><tr><th></th><th>{a.isim}</th><th>{b.isim}</th></tr>'
-                f'{ust_satir}{govde}</table>', unsafe_allow_html=True)
-    st.caption("Yeşil değer o özellikte daha iyi olan telefonu gösterir (fiyatta düşük olan daha iyi).")
+    tablo_kol, radar_kol = st.columns([1.35, 1], gap="large")
+    with tablo_kol:
+        st.markdown(f'<table class="tablo"><tr><th></th><th>{a.isim}</th><th>{b.isim}</th></tr>'
+                    f'{ust_satir}{govde}</table>', unsafe_allow_html=True)
+        st.caption("Yeşil değer o özellikte daha iyi olan telefonu gösterir (fiyatta düşük olan daha iyi). "
+                   "Katalogdaki kartlarda \"⚖️ Karşılaştır\" butonuyla da telefon seçebilirsin.")
+    with radar_kol:
+        st.markdown('<div class="bolum" style="margin-top:1rem">🕸️ Özellik haritası</div>', unsafe_allow_html=True)
+        st.markdown(radar_svg([(a.isim, a, "#60a5fa"), (b.isim, b, "#f472b6")]), unsafe_allow_html=True)
+        st.caption("Her eksen, o özelliğin 970 telefon arasındaki yerini gösterir: merkez en düşük, dış çember en yüksek.")
 
 # ------------------------------------------------------------
 # 4) Proje hakkında
@@ -720,7 +999,49 @@ Mert Ali Dağ · Gürkan Tural · Efe Erdem
 [📂 Projenin GitHub sayfası](https://github.com/mertalidag14/Mobile-Price-Range)
 """)
 
+    # Grafikler: sitedeki modelden canlı hesaplanır
+    st.markdown('<div class="bolum" style="margin-top:1.4rem;font-size:1.25rem">📈 Modelin grafikleri</div>',
+                unsafe_allow_html=True)
+    g1, g2 = st.columns(2, gap="large")
+    with g1:
+        st.markdown('<div class="bolum">Özellik önemi (Random Forest)</div>', unsafe_allow_html=True)
+        onemler = sorted(zip(OZELLIKLER, model.feature_importances_), key=lambda x: -x[1])
+        en_buyuk = onemler[0][1]
+        st.markdown("".join(
+            f'<div class="onem"><span>{OZELLIK_ADI[s][0]} {OZELLIK_ADI[s][1]}</span>'
+            f'<div class="iz"><div class="dolu" style="width:{o / en_buyuk * 100:.0f}%"></div></div>'
+            f'<span class="deger">%{o * 100:.1f}</span></div>' for s, o in onemler), unsafe_allow_html=True)
+        st.caption("Modelin karar verirken her özelliğe ne kadar dayandığı. Toplamı %100.")
+    with g2:
+        st.markdown('<div class="bolum">Karışıklık matrisi (test seti)</div>', unsafe_allow_html=True)
+        en_cok = KARISIKLIK.max()
+        kisa = ["Düşük", "Orta", "Yüksek", "Çok yük."]
+        hucreler = ""
+        for i in range(4):
+            hucreler += f'<tr><th>{SEGMENTLER[i][1]} {kisa[i]}</th>'
+            for j in range(4):
+                n = KARISIKLIK[i, j]
+                renk = "52,211,153" if i == j else "244,114,182"
+                hucreler += (f'<td style="background:rgba({renk},{.12 + .75 * n / en_cok:.2f});'
+                             f'font-weight:{800 if i == j else 500}">{n}</td>')
+            hucreler += "</tr>"
+        st.markdown(f'<table class="km"><tr><th>Gerçek ↓ / Tahmin →</th>'
+                    + "".join(f"<th>{SEGMENTLER[j][1]} {kisa[j]}</th>" for j in range(4))
+                    + f'</tr>{hucreler}</table>', unsafe_allow_html=True)
+        st.caption(f"Köşegendeki yeşil kutular doğru tahminler ({KARISIKLIK.trace()} / {KARISIKLIK.sum()}). "
+                   "Hatalar çoğunlukla komşu segmentler arasında.")
+
 st.markdown('<div class="not">Telefon bilgileri ve fiyatları: Smartprix (Hindistan) verisinden alınan Kaggle veri seti. '
             f'TL fiyatları Hindistan fiyatlarının 1 ₹ ≈ {KUR} TL kuruyla çevrilmiş hâlidir. '
             'Marka adları ve logoları sahiplerine aittir (logolar: Simple Icons). · Okul projesi</div>',
             unsafe_allow_html=True)
+
+# Sayfa içi yönlendirmeler (görünmez küçük betikler)
+if "_sekmeye_git" in st.session_state:
+    sekmeye_gec(st.session_state.pop("_sekmeye_git"))
+# Telefonda yeni bir tahmin çıkınca sonuç kartına kaydır (form uzun olduğu için kart aşağıda kalıyor)
+if tahmin_imzasi is not None and st.session_state.get("_son_tahmin") != tahmin_imzasi:
+    st.session_state["_son_tahmin"] = tahmin_imzasi
+    js_calistir("let d=0;const f=()=>{const w=window;const e=w.document.getElementById('tahmin-sonucu');"
+                "if(e){if(w.innerWidth < 768)e.scrollIntoView({behavior:'smooth',block:'start'});}"
+                "else if(d++ < 30)setTimeout(f,100)};f();")

@@ -395,7 +395,7 @@ Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir St
 
 ### 📸 Ekran Görüntüleri
 
-**🔮 Fiyat Tahmini:** Telefon adı yazılıp model seçilince fiyat segmenti, model güveni ve varyantın gerçek fiyatı
+**🔮 Fiyat Tahmini:** Hızlı deneme butonları, tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
 
 ![TeknoTahmin – Fiyat Tahmini](https://drive.google.com/thumbnail?id=1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd&sz=w1600)
 
@@ -405,12 +405,12 @@ Projenin gerçek telefon verisiyle eğitilen modeli **TeknoTahmin** adlı bir St
 ![TeknoTahmin – Telefon Kataloğu](https://drive.google.com/thumbnail?id=1H00gzaTHNpeT5uFYHsX7p5rbm8FpNWHf&sz=w1600)
 
 
-**⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması
+**⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması ve özellik haritası (radar grafik)
 
 ![TeknoTahmin – Karşılaştır](https://drive.google.com/thumbnail?id=1JCYjiNZqY0HPMuGOkD4iVuRtXl5neb3V&sz=w1600)
 
 
-**📊 Proje Hakkında:** Veri seti, segmentler ve model sonuçlarının özeti
+**📊 Proje Hakkında:** Yöntem, ekip ve modelin grafikleri (özellik önemi, karışıklık matrisi)
 
 ![TeknoTahmin – Proje Hakkında](https://drive.google.com/thumbnail?id=129iSuU-p2AsIGvmo2wR4eBQivA3mjSKx&sz=w1600)
 
