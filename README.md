@@ -234,9 +234,8 @@ Sistemi kimlerin kullandığını ve ne yapabildiklerini gösteriyor.
 ```
 Mobile-Price-Range/
 ├── README.md                      → Projenin tanıtımı ve sonuçları
-├── Yeni veri seti ayıklama raporu.md → Gerçek telefon verisi (v2) için hata ayıklama raporu (Efe Erdem)
 ├── v1_kaggle_analizi/             → İlk analiz (Kaggle sentetik veri seti) ve ona ait belgeler
-├── v2_gercek_telefon_analizi/     → Gerçek telefon verisiyle analiz
+├── v2_gercek_telefon_analizi/     → Gerçek telefon verisiyle analiz ve ona ait belgeler
 └── web_arayuzu/                   → TeknoTahmin web sitesi (Render'da çalışan kod)
 ```
 
@@ -268,6 +267,7 @@ Mobile-Price-Range/
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python hâli |
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
 | `grafikler_gercek/` | Gerçek veriyle çizilen grafikler |
+| `belgeler/Yeni veri seti ayıklama raporu.md` | Gerçek veri için eksik, hatalı ve aykırı değer kontrol raporu (Efe Erdem) |
 
 ### 🌐 `web_arayuzu/` – TeknoTahmin web sitesi
 | Dosya | Açıklama |
