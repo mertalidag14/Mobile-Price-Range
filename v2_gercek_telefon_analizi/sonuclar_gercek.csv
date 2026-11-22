@@ -1,5 +1,5 @@
 ,Accuracy,Precision,Recall,F1-Score
-"KNN (k=3, StandardScaler)",0.701,0.6982,0.701,0.6963
-Random Forest,0.7474,0.7441,0.7474,0.743
-XGBoost,0.768,0.7651,0.768,0.7636
-LightGBM,0.7526,0.7495,0.7526,0.7462
+"KNN (k=3, StandardScaler)",0.7062,0.7019,0.7062,0.6993
+Random Forest,0.7577,0.7544,0.7577,0.7533
+XGBoost,0.7629,0.7596,0.7629,0.758
+LightGBM,0.7371,0.733,0.7371,0.7284

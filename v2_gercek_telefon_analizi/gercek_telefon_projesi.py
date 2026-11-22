@@ -61,6 +61,10 @@ df = ham.copy()
 print("Eksik değerler:\n", df[OZELLIKLER].isnull().sum()[lambda s: s > 0].to_string())
 # Hızlı şarj yoksa watt değeri boş: 0 yap
 df["fast_charging"] = df["fast_charging"].fillna(0)
+# Ekran çözünürlüğü bazı telefonlarda ters girilmiş (genişlik > yükseklik, ör. 2400 × 1080): yerlerini değiştir
+ters = df["resolution_width"] > df["resolution_height"]
+print(f"Çözünürlüğü ters girilmiş {ters.sum()} telefon düzeltildi (genişlik ↔ yükseklik).")
+df.loc[ters, ["resolution_width", "resolution_height"]] = df.loc[ters, ["resolution_height", "resolution_width"]].values
 # Diğer az sayıdaki eksik değerleri medyan ile doldur
 for sutun in ["processor_speed", "num_cores", "battery_capacity", "primary_camera_front"]:
     df[sutun] = df[sutun].fillna(df[sutun].median())

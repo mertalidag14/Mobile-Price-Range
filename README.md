@@ -6,7 +6,7 @@ Bu projede bir telefonun donanım özelliklerine (RAM, depolama, batarya, işlem
 
 ---
 
-## Problem
+## 📌 Problem
 
 Piyasada çok fazla telefon ve çok fazla özellik kombinasyonu var. Bir telefonun özelliklerine bakıp "bu telefon ucuz mu, orta mı, pahalı mı olmalı?" sorusunu cevaplamak kolay değil. Özellikler arasındaki ilişki de düz bir kurala oturmuyor: sadece RAM'e ya da sadece kameraya bakarak fiyatı doğru tahmin edemiyoruz.
 
@@ -14,7 +14,7 @@ Biz bu soruyu makine öğrenmesiyle çözmeye çalışıyoruz. Ana modellerimiz 
 
 ---
 
-## Projenin Amacı
+## 🎯 Projenin Amacı
 
 - Telefonları özelliklerine göre **4 fiyat segmentine** ayırmak: `0: Düşük`, `1: Orta`, `2: Yüksek`, `3: Çok yüksek`.
 - KNN ve Random Forest'ı karşılaştırmak: hangisi daha başarılı, hangisi ezberlemeye (overfitting) daha yatkın, hangisi daha hızlı.
@@ -22,7 +22,7 @@ Biz bu soruyu makine öğrenmesiyle çözmeye çalışıyoruz. Ana modellerimiz 
 
 ---
 
-## Kimler İşine Yarar?
+## 👤 Kimler İşine Yarar?
 
 - **Telefon almak isteyenler:** Baktığı telefonun özellikleri fiyatını hak ediyor mu, fikir edinebilir.
 - **Alışveriş ve karşılaştırma siteleri:** Yeni eklenen telefonları otomatik olarak fiyat gruplarına ayırabilir.
@@ -30,7 +30,7 @@ Biz bu soruyu makine öğrenmesiyle çözmeye çalışıyoruz. Ana modellerimiz 
 
 ---
 
-## Veri Seti
+## 📁 Veri Seti
 
 Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri setiyle yapıyoruz (v1), sonra aynı adımları gerçek telefon verisiyle tekrarlıyoruz (v2). Neden değiştirdiğimizi en alttaki **"Veri Seti Neden Değişiyor?"** kısmında anlatıyoruz.
 
@@ -56,15 +56,15 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 | **Satır / Sütun** | 980 gerçek telefon, 22 sütun (marka, model, fiyat ve donanım özellikleri) |
 | **Fiyat** | Gerçek satış fiyatı, Hindistan Rupisi (₹) |
 | **Hedef Değişken** | `price_range`: fiyatı 4 eşit gruba (çeyrek) bölerek biz oluşturuyoruz |
-| **Temizleme** | En pahalı %1'lik 10 lüks telefonu çıkarıyoruz, birkaç eksik değeri medyanla dolduruyoruz, geriye 970 telefon kalıyor |
+| **Temizleme** | Ekran çözünürlüğü ters girilmiş 39 telefonu düzeltiyoruz, en pahalı %1'lik 10 lüks telefonu çıkarıyoruz, birkaç eksik değeri medyanla dolduruyoruz, geriye 970 telefon kalıyor |
 
 **Kullandığımız özellikler (16):** `ram_capacity`, `internal_memory`, `battery_capacity`, `processor_speed`, `num_cores`, `screen_size`, `refresh_rate`, `resolution_height`, `resolution_width`, `primary_camera_rear`, `primary_camera_front`, `num_rear_cameras`, `5G_or_not`, `fast_charging_available`, `fast_charging`, `extended_memory_available`.
 
 ---
 
-## Neleri Yapıyoruz, Neleri Yapmıyoruz?
+## 🔍 Neleri Yapıyoruz, Neleri Yapmıyoruz?
 
-### Yaptıklarımız
+### ✅ Yaptıklarımız
 - **Veri temizliği:** Eksik değerlere, tekrar eden satırlara ve mantıksız değerlere (ör. ekran yüksekliğinin 0 olması) bakıyoruz, aykırı değerleri kutu grafikleriyle inceliyoruz.
 - **Keşifçi veri analizi (EDA):** Sınıfların dağılımına, temel istatistiklere ve özellikler arasındaki korelasyona bakıyoruz.
 - **Ölçeklendirme:** KNN için ölçeklendirmesiz, `StandardScaler` ve `MinMaxScaler` hâllerini karşılaştırıyoruz.
@@ -73,7 +73,7 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 - **Değerlendirme:** `Accuracy`, `Precision`, `Recall`, `F1-Score`, `Confusion Matrix`, öğrenme eğrisi, eğitim/test farkı (overfitting kontrolü) ve hata analizi.
 - **Özellik önemi:** Random Forest'ın `Feature Importance` skorlarına bakıyor, sadece en önemli 5 özellikle de model kurup sonucu karşılaştırıyoruz.
 
-### Yapmadıklarımız
+### ❌ Yapmadıklarımız
 - Fiyatları e-ticaret sitelerinden canlı olarak çekmiyoruz (web scraping yok).
 - Kur, vergi ya da marka değeri (Apple, Samsung gibi) gibi donanım dışı şeyleri modele katmıyoruz.
 - Derin öğrenme (yapay sinir ağları) kullanmıyoruz.
@@ -82,7 +82,7 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 
 ---
 
-## Ekip ve Görev Dağılımı
+## 👥 Ekip ve Görev Dağılımı
 
 | Üye | Ne yapıyor? |
 | :--- | :--- |
@@ -92,29 +92,29 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 
 ---
 
-## Kullandığımız Teknolojiler
+## 🛠️ Kullandığımız Teknolojiler
 
-### Dil ve geliştirme ortamı
+### 🐍 Dil ve geliştirme ortamı
 - **Python:** Veri bilimi kütüphaneleri çok olduğu ve okunması kolay olduğu için ana dilimiz Python.
 - **VS Code / Jupyter Notebook:** Kodu adım adım çalıştırıp grafikleri anında görmek için kullanıyoruz.
 - **HTML & CSS:** Sitedeki kartları, sonuç kutusunu, marka şeridini, koyu cam görünümlü tasarımı ve telefona uyumlu düzeni bunlarla yapıyoruz.
 - **SVG:** Arka plandaki bulanık telefon çizimleri, telefon ikonları ve marka logoları SVG ile çiziliyor.
 - **Dockerfile & TOML:** Sitenin sunucuda nasıl kurulacağını `Dockerfile`, tema ayarlarını `.streamlit/config.toml` belirliyor.
 
-### Web sitesi ve yayınlama
+### 🌐 Web sitesi ve yayınlama
 - **Streamlit:** Python koduyla web sitesi yapmamızı sağlıyor. Açılır seçim kutuları, arama kutusu, filtreler, sekmeler ve sayfalama Streamlit'in hazır parçaları.
 - **Docker:** Site her bilgisayarda aynı şekilde çalışsın diye uygulamayı `python:3.13-slim` tabanlı bir konteynere koyuyoruz.
 - **Render:** Siteyi ücretsiz planda Render'da yayınlıyoruz (Frankfurt sunucusu).
 - **Git & GitHub:** Kodu burada tutuyor ve paylaşıyoruz, Render da kodu buradan çekiyor. Görevleri GitHub Projects'teki kanban tablosunda takip ediyoruz.
 - **Simple Icons:** Sitedeki marka logolarını buradan alıyoruz (açık lisanslı, CC0).
 
-### Veri bilimi kütüphaneleri
+### 📚 Veri bilimi kütüphaneleri
 - **Pandas & NumPy:** Tabloları okumak, eksik verileri doldurmak, filtrelemek ve hesap yapmak için.
 - **Matplotlib & Seaborn:** Histogram, kutu grafikleri, korelasyon ısı haritası, confusion matrix, öğrenme eğrisi ve özellik önemi grafikleri için.
 - **XGBoost & LightGBM:** Karşılaştırma için kullandığımız Gradient Boosting modelleri.
 - **Joblib:** En iyi modeli `.pkl` dosyası olarak kaydetmek için.
 
-### Makine öğrenmesi algoritmaları (Scikit-Learn)
+### 🤖 Makine öğrenmesi algoritmaları (Scikit-Learn)
 - **KNN (K-Nearest Neighbors):**
   - **Nasıl çalışıyor:** Yeni bir telefonun en yakın $K$ komşusuna bakıyor ve çoğunluk hangi segmentteyse onu seçiyor. Yakınlığı Öklid mesafesiyle ölçüyor.
   - **Veri hazırlığı:** mAh ile GHz gibi farklı birimlerdeki özellikler mesafe hesabını bozmasın diye verileri `StandardScaler` / `MinMaxScaler` ile aynı ölçeğe getiriyoruz. Ölçekleyiciyi sadece eğitim verisine `fit` ediyoruz ki test verisinden bilgi sızmasın.
@@ -127,7 +127,7 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 
 ---
 
-## UML Diyagramları
+## 📊 UML Diyagramları
 
 Projenin yapısını, adımların sırasını ve kullanıcıların siteyle ne yapabildiğini göstermek için üç UML diyagramı hazırlıyoruz. Gerçek telefon verisine (v2) ve web sitesine geçince diyagramları da güncelliyoruz. İlk hâlleri **v1**, güncel hâlleri **v2** olarak duruyor:
 
@@ -152,7 +152,7 @@ Projenin parçalarını ve bu parçaların birbiriyle ilişkisini gösteriyor: v
 | Sınıf | Görevi | Koddaki karşılığı |
 | :--- | :--- | :--- |
 | `VeriYukleyici` | Seçilen veri setini (v1 sentetik ya da v2 gerçek telefonlar) dosyadan okuyor. | `pd.read_csv(...)` (1. bölüm) |
-| `VeriOnIsleyici` | Eksik değerleri dolduruyor, en pahalı %1'lik lüks telefonları çıkarıyor, fiyatı 4 segmente bölüyor, veriyi %80/%20 ayırıyor ve KNN için ölçeklendiriyor. | 2, 3, 5 ve 6. bölümler |
+| `VeriOnIsleyici` | Ters girilmiş ekran çözünürlüklerini düzeltiyor, eksik değerleri dolduruyor, en pahalı %1'lik lüks telefonları çıkarıyor, fiyatı 4 segmente bölüyor, veriyi %80/%20 ayırıyor ve KNN için ölçeklendiriyor. | 2, 3, 5 ve 6. bölümler |
 | `KesifciAnaliz` | Sınıf dağılımı, korelasyon ısı haritası ve boxplot grafiklerini çiziyor. | 4 ve 17. bölümler |
 | `ModelEgitici` | KNN, Random Forest, XGBoost ve LightGBM'i GridSearchCV ile en iyi parametrelerle eğitiyor. | 7, 8 ve 9. bölümler |
 | `ModelDegerlendirici` | Accuracy/Precision/Recall/F1, confusion matrix, 5-fold CV, öğrenme eğrisi, özellik önemi ve hata analizini hesaplıyor. | 10–18. bölümler |
@@ -175,7 +175,7 @@ Projenin baştan sona adımlarını gösteriyor: veri setini seçmekten modeli w
 
 **Adımlar:**
 1. **Veri setini seçiyoruz:** Ya sentetik Kaggle verisiyle (v1) ya da 980 gerçek telefonla (v2) başlıyoruz. İki yol da aynı adımlardan geçiyor, böylece sonuçları karşılaştırabiliyoruz.
-2. **Gerçek veriyi temizliyoruz:** v2'de birkaç eksik değeri medyanla dolduruyor ve fiyat dağılımını bozan en pahalı %1'lik lüks telefonları (ör. Vertu) çıkarıyoruz. Sonra telefonları fiyatlarına göre 4 eşit segmente ayırıyoruz. v1'de segmentler hazır geldiği için bu adıma gerek yok.
+2. **Gerçek veriyi temizliyoruz:** v2'de ters girilmiş ekran çözünürlüklerini düzeltiyor, birkaç eksik değeri medyanla dolduruyor ve fiyat dağılımını bozan en pahalı %1'lik lüks telefonları (ör. Vertu) çıkarıyoruz. Sonra telefonları fiyatlarına göre 4 eşit segmente ayırıyoruz. v1'de segmentler hazır geldiği için bu adıma gerek yok.
 3. **EDA yapıyoruz:** Sınıf dağılımına, korelasyonlara ve aykırı değerlere grafiklerle bakıyoruz.
 4. **Eğitim/test diye ayırıyoruz:** Veriyi segment oranlarını koruyarak (stratified) %80 eğitim, %20 test olarak bölüyoruz.
 5. **Ölçeklendirmeye karar veriyoruz:** KNN mesafeye baktığı için ölçeklendirmeden etkileniyor, o yüzden StandardScaler ve MinMaxScaler'ı deniyoruz. Ağaç tabanlı modeller (Random Forest, XGBoost, LightGBM) ham değerlerle çalışıyor.
@@ -204,7 +204,7 @@ Sistemi kimlerin kullandığını ve ne yapabildiklerini gösteriyor.
 
 ---
 
-## Klasör Yapısı
+## 📂 Klasör Yapısı
 
 ```
 Mobile-Price-Range/
@@ -214,7 +214,7 @@ Mobile-Price-Range/
 └── web_arayuzu/                   → TeknoTahmin web sitesi (Render'da çalışan kod)
 ```
 
-### `v1_kaggle_analizi/belgeler/` – Araştırma belgeleri (v1 veri setine ait)
+### 📚 `v1_kaggle_analizi/belgeler/` – Araştırma belgeleri (v1 veri setine ait)
 | Dosya | Açıklama |
 | :--- | :--- |
 | `Literatur_Arastirmasi.md` | Benzer çalışmalar ve literatür taraması |
@@ -222,7 +222,7 @@ Mobile-Price-Range/
 | `Veri_seti_hata_ayıklama_raporu.md` | Veri kalitesi / hata ayıklama raporu |
 | `Proje İçin Kullanılan Veri Seti Örneği` | Veri setinin kaynağı ve örnek kayıtlar |
 
-### `v1_kaggle_analizi/` – İlk analiz (sentetik veri seti)
+### 🧪 `v1_kaggle_analizi/` – İlk analiz (sentetik veri seti)
 | Dosya | Açıklama |
 | :--- | :--- |
 | `train.csv` | Veri seti (2000 satır, 21 sütun), kaynak: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification) |
@@ -234,7 +234,7 @@ Mobile-Price-Range/
 | `en_iyi_model_rf.pkl`, `scaler.pkl` | Kaydedilen Random Forest modeli ve StandardScaler |
 | `grafikler/` | Sınıf dağılımı, korelasyon, boxplot, confusion matrix, feature importance, KNN k grafiği, öğrenme eğrisi |
 
-### `v2_gercek_telefon_analizi/` – Gerçek telefon verisiyle analiz
+### 📱 `v2_gercek_telefon_analizi/` – Gerçek telefon verisiyle analiz
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
@@ -243,7 +243,7 @@ Mobile-Price-Range/
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
 | `grafikler_gercek/` | Gerçek veriyle çizilen grafikler |
 
-### `web_arayuzu/` – TeknoTahmin web sitesi
+### 🌐 `web_arayuzu/` – TeknoTahmin web sitesi
 | Dosya | Açıklama |
 | :--- | :--- |
 | `app.py` | Sitenin Streamlit kodu |
@@ -255,7 +255,7 @@ Mobile-Price-Range/
 
 ---
 
-## Kurulum ve Çalıştırma
+## ⚙️ Kurulum ve Çalıştırma
 
 ```bash
 # 1. Depoyu indirin
@@ -285,7 +285,7 @@ VS Code kullanıyorsanız notebook'u açıp **Run All** demeniz yeterli.
 
 ---
 
-## Sonuçlar (v1, sentetik veri seti)
+## 📈 Sonuçlar (v1, sentetik veri seti)
 
 Gerçek telefon verisiyle çıkan sonuçlar aşağıdaki **"Gerçek Telefon Verisiyle Analiz (v2)"** kısmında.
 
@@ -297,7 +297,7 @@ Test seti 400 örnekten oluşuyor (%20, stratified). Metrikler ağırlıklı (we
 | KNN (k=29, StandardScaler) | 0.6600 | 0.6688 | 0.6600 | 0.6623 |
 | Random Forest | 0.8825 | 0.8818 | 0.8825 | 0.8819 |
 
-### 5-Fold Cross-Validation (Accuracy)
+### 🔁 5-Fold Cross-Validation (Accuracy)
 
 Sadece tek bir test bölmesine güvenmemek için bütün modelleri 2000 örnek üzerinde 5-fold CV ile de deniyoruz.
 
@@ -310,7 +310,7 @@ Sadece tek bir test bölmesine güvenmemek için bütün modelleri 2000 örnek �
 
 XGBoost ve LightGBM, Random Forest'ı yaklaşık 3–4 puan geçiyor. Standart sapmalar düşük, yani sonuçlar kararlı.
 
-### Neler görüyoruz?
+### 💡 Neler görüyoruz?
 - **En iyi sonucu ölçeklendirmesiz KNN veriyor** (%93,5). Cross-validation'da XGBoost %91,3, LightGBM %90,85, Random Forest %87,55 alıyor. Ölçeklendirilmiş KNN ise %66'da kalıyor.
 - **Ölçeklendirme KNN'i bozuyor (beklemediğimiz bir sonuç):** Ölçeklendirmesiz veride `ram` (250–4000 arası) mesafe hesabını domine ediyor. RAM de fiyatı en iyi açıklayan özellik olduğu için KNN çok başarılı oluyor. StandardScaler bütün özelliklere eşit ağırlık verince fiyatla ilgisi olmayan 16 özellik mesafeyi karıştırıyor ve başarı %50'ye düşüyor.
 - **RAM açık ara en önemli özellik:** fiyat segmentiyle korelasyonu **0,92**, Random Forest'taki önem skoru yaklaşık **0,48**. Ondan sonra `battery_power` (0,20), `px_width` (0,17) ve `px_height` (0,15) geliyor. Diğer özelliklerin fiyatla korelasyonu 0,05'in altında.
@@ -319,7 +319,7 @@ XGBoost ve LightGBM, Random Forest'ı yaklaşık 3–4 puan geçiyor. Standart s
 - **Overfitting:** Random Forest eğitimde %100, CV'de yaklaşık %87,5 alıyor. Öğrenme eğrisi hâlâ yükseldiği için daha fazla veriyle başarının artmasını bekliyoruz.
 - **Veri seti tamamen dengeli:** her segmentte 500 örnek var.
 
-### Hipotezlerimiz
+### 🧩 Hipotezlerimiz
 | Hipotez | Sonuç | Neden |
 | :--- | :---: | :--- |
 | H1: Teknik özelliklerle 4 segment ayırt edilebilir | ✅ Kabul | Random Forest %88,25 doğruluk |
@@ -329,29 +329,29 @@ XGBoost ve LightGBM, Random Forest'ı yaklaşık 3–4 puan geçiyor. Standart s
 
 ---
 
-## Gerçek Telefon Verisiyle Analiz (v2)
+## 📱 Gerçek Telefon Verisiyle Analiz (v2)
 
 Sentetik veriden sonra modeli **980 gerçek telefonun** gerçek satış fiyatlarıyla da deniyoruz (Smartprix, Hindistan). En pahalı %1'lik lüks telefonları (ör. Vertu) çıkarıyoruz, kalan **970 telefonu** fiyatlarına göre 4 eşit segmente bölüyoruz: Düşük ₹3.499–12.999, Orta ₹12.999–19.990, Yüksek ₹19.990–34.999, Çok yüksek ₹34.999–163.980. Modelde 16 donanım özelliği kullanıyoruz (RAM, depolama, batarya, işlemci hızı, ekran, kamera, 5G, hızlı şarj vb.).
 
 | Model | Accuracy | Precision | Recall | F1-Score | 5-Fold CV |
 | :--- | :---: | :---: | :---: | :---: | :---: |
-| KNN (k=3, StandardScaler) | 0.7010 | 0.6982 | 0.7010 | 0.6963 | 0.6186 |
-| Random Forest | 0.7474 | 0.7441 | 0.7474 | 0.7430 | **0.7062** |
-| **XGBoost** | **0.7680** | **0.7651** | **0.7680** | **0.7636** | 0.6794 |
-| LightGBM | 0.7526 | 0.7495 | 0.7526 | 0.7462 | 0.6804 |
+| KNN (k=3, StandardScaler) | 0.7062 | 0.7019 | 0.7062 | 0.6993 | 0.6351 |
+| Random Forest | 0.7577 | 0.7544 | 0.7577 | 0.7533 | **0.7113** |
+| **XGBoost** | **0.7629** | **0.7596** | **0.7629** | **0.7580** | 0.6784 |
+| LightGBM | 0.7371 | 0.7330 | 0.7371 | 0.7284 | 0.6794 |
 
-**Neler görüyoruz?**
+**💡 Neler görüyoruz?**
 - Gerçek veride başarı sentetik veriye göre daha düşük (%94 yerine %75 civarı). Çünkü gerçek fiyat sadece donanıma değil, marka değerine, tasarıma ve pazarlamaya da bağlı.
 - Sentetik veride fiyatı neredeyse tek başına RAM belirliyor. Gerçek veride ise **işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü** birlikte önemli.
-- Bu sefer ölçeklendirme KNN'e yardım ediyor (F1: 0.64 → 0.66), çünkü gerçek veride tek bir özellik baskın değil.
+- Bu sefer ölçeklendirme KNN'e yardım ediyor (F1: 0.62 → 0.66), çünkü gerçek veride tek bir özellik baskın değil.
 - Hatalar yine çoğunlukla yan yana segmentlerde (ör. Düşük ↔ Orta).
-- Veriyi incelerken 39 telefonda ekran çözünürlüğünün genişlik ve yüksekliğinin ters girildiğini fark ediyoruz. Bunu düzeltmek bir sonraki adımımız.
+- Veriyi incelerken 39 telefonda ekran çözünürlüğünün genişlik ve yüksekliğinin ters girildiğini fark ediyoruz (ör. 1080 × 2400 yerine 2400 × 1080). Bu telefonlarda iki değerin yerini değiştirip modelleri yeniden eğitiyoruz. Yukarıdaki tablo düzeltilmiş verinin sonuçları.
 
 ---
 
-## Proje Durumu ve Sonraki Adımlar
+## 🚀 Proje Durumu ve Sonraki Adımlar
 
-### Bitenler
+### ✅ Bitenler
 - Keşifçi veri analizi, veri kalitesi ve mantıksal tutarlılık kontrolleri (v1 ve v2)
 - KNN için ölçeklendirme karşılaştırması (ölçeklendirmesiz / StandardScaler / MinMaxScaler)
 - KNN ve Random Forest'ın `GridSearchCV` ile ayarlanması
@@ -363,14 +363,13 @@ Sentetik veriden sonra modeli **980 gerçek telefonun** gerçek satış fiyatlar
 - Aynı analizin 980 gerçek telefonla tekrarlanması (v2)
 - **TeknoTahmin** web sitesi (Streamlit + Docker, Render'da yayında)
 
-### Sonraki adımlar
+### 🔭 Sonraki adımlar
 - `CatBoost` ve `SVM` modellerini de eklemek.
 - `RandomizedSearchCV` ile daha geniş bir parametre aralığını daha hızlı taramak.
-- Gerçek veride ters girilmiş 39 ekran çözünürlüğünü düzeltip modeli yeniden eğitmek.
 
 ---
 
-## Web Sitesi: TeknoTahmin
+## 🌐 Web Sitesi: TeknoTahmin
 
 Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Streamlit sitesine çeviriyoruz (canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 4 sekme var:
 
@@ -379,9 +378,9 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **⚖️ Karşılaştır:** İki gerçek telefonu yan yana koyuyor (gerçek segment ve modelin tahmini dahil) ve özelliklerini bir radar grafikte gösteriyor.
 - **📊 Proje Hakkında:** Yöntem, ekip, model sonuçları ve modelin grafikleri (özellik önemi, karışıklık matrisi).
 
-**Model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu yaklaşık **%76**.
+**Model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu yaklaşık **%74**.
 
-### Ekran Görüntüleri
+### 📸 Ekran Görüntüleri
 
 **🔮 Fiyat Tahmini:** Hızlı dene butonları, tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
 
@@ -418,7 +417,7 @@ streamlit run app.py
 
 ---
 
-## Veri Seti Neden Değişiyor?
+## 🔄 Veri Seti Neden Değişiyor?
 
 Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başlıyoruz (eski veri seti: [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)). Bu veriyle yaptığımız analiz (v1) olduğu gibi duruyor: `v1_kaggle_analizi/` klasörü.
 
@@ -432,7 +431,7 @@ Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başlıyoruz (e
 **Yeni veri setiyle neler değişiyor?**
 - 980 **gerçek** telefonu marka ve model adlarıyla, **gerçek satış fiyatlarıyla** kullanıyoruz.
 - Segmentleri gerçek fiyatlara göre 4 eşit gruba bölerek oluşturuyoruz, böylece her segmentin fiyat aralığı belli.
-- Başarı %94'ten yaklaşık **%75'e** düşüyor (en iyi: XGBoost %76,8). Bu düşüş beklenen bir şey: gerçek fiyat donanımın yanında marka değeri, tasarım ve pazarlama gibi modelin göremediği şeylere de bağlı. Bu yüzden v2 sonuçları gerçek hayatı daha dürüst gösteriyor.
+- Başarı %94'ten yaklaşık **%75'e** düşüyor (en iyi: XGBoost %76,3). Bu düşüş beklenen bir şey: gerçek fiyat donanımın yanında marka değeri, tasarım ve pazarlama gibi modelin göremediği şeylere de bağlı. Bu yüzden v2 sonuçları gerçek hayatı daha dürüst gösteriyor.
 - En önemli özellik artık tek başına RAM değil: **işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü** birlikte belirleyici.
 - Web sitesi (TeknoTahmin) bu sayede gerçek telefonları gerçek fiyatlarıyla gösterebiliyor.
 

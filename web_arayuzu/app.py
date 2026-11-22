@@ -298,6 +298,9 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 def veri_yukle():
     df = pd.read_csv(TABAN / "gercek_telefonlar.csv")
     df["fast_charging"] = df["fast_charging"].fillna(0)
+    # Ekran çözünürlüğü bazı telefonlarda ters girilmiş (genişlik > yükseklik, ör. 2400 × 1080): yerlerini değiştir
+    ters = df["resolution_width"] > df["resolution_height"]
+    df.loc[ters, ["resolution_width", "resolution_height"]] = df.loc[ters, ["resolution_height", "resolution_width"]].values
     for sutun in ["processor_speed", "num_cores", "battery_capacity", "primary_camera_front"]:
         df[sutun] = df[sutun].fillna(df[sutun].median())
     # Analiz koduyla aynı: en pahalı %1'lik lüks telefonlar çıkarılıyor
@@ -988,6 +991,7 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
   için gerçek telefon verisine geçildi (v2).
 
 #### 🧹 Veri ön işleme
+- Ekran çözünürlüğü ters girilmiş 39 telefonda (ör. 2400 × 1080) genişlik ve yükseklik yer değiştirildi.
 - Eksik değerler medyanla dolduruldu, hızlı şarj bilgisi olmayanlar 0 W kabul edildi.
 - Fiyatı uç değerde olan en pahalı %1'lik lüks telefonlar (ör. Vertu) çıkarıldı.
 - Telefonlar fiyatlarına göre **4 eşit gruba (çeyreklere)** bölündü: {sinir_metni}
@@ -1005,10 +1009,10 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 
 | Model | Accuracy | F1-Score | 5-Fold CV |
 | :--- | :---: | :---: | :---: |
-| KNN (k=3, StandardScaler) | %70.1 | 0.696 | %61.9 |
-| Random Forest | %74.7 | 0.743 | **%70.6** |
-| **XGBoost** | **%76.8** | **0.764** | %67.9 |
-| LightGBM | %75.3 | 0.746 | %68.0 |
+| KNN (k=3, StandardScaler) | %70.6 | 0.699 | %63.5 |
+| Random Forest | %75.8 | 0.753 | **%71.1** |
+| **XGBoost** | **%76.3** | **0.758** | %67.8 |
+| LightGBM | %73.7 | 0.728 | %67.9 |
 
 - **Bu sitedeki model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu
   **%{DOGRULUK * 100:.1f}**. Cross-validation'da en kararlı model olduğu için seçildi.
