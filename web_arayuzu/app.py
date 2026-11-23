@@ -14,7 +14,7 @@ import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
@@ -299,6 +299,19 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 .markalar .marka {{ flex: none; }}
 .cipler {{ flex-wrap: nowrap; overflow-x: auto; }}
 .cip {{ flex: none; }}
+/* Telefon görünümü: daha az boşluk, büyük yazılar biraz küçük, hazır bütçe butonları tek satırda */
+.block-container {{ margin: .4rem auto; padding: 1.1rem .8rem !important; }}
+.sonuc {{ padding: 1.1rem 1.1rem; }}
+.sonuc .ana {{ font-size: 1.55rem; }}
+.sonuc .fiyat {{ font-size: 1.7rem; }}
+.kart .fiyat {{ font-size: 1.25rem; }}
+.tablo {{ font-size: .85rem; }}
+.tablo th, .tablo td {{ padding: .5rem .4rem; }}
+.st-key-hizli_butce [data-testid="stHorizontalBlock"] {{ flex-wrap: nowrap !important; gap: .3rem !important; }}
+.st-key-hizli_butce [data-testid="stColumn"] {{ min-width: 0 !important; width: auto !important; flex: 1 1 0 !important; }}
+.st-key-hizli_butce button {{ padding: .25rem .2rem; min-height: 2.2rem; }}
+.st-key-hizli_butce button p {{ font-size: .8rem; white-space: nowrap; }}
+.cipler, .st-key-marka_seridi {{ -webkit-mask: linear-gradient(90deg, #000 85%, transparent); mask: linear-gradient(90deg, #000 85%, transparent); }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -421,6 +434,31 @@ KAMERA_SECENEK = sorted(df["primary_camera_rear"].round().astype(int).unique())
 
 def gb_yaz(x):
     return f"{x / 1024:g} TB" if x >= 1024 else f"{x:g} GB"
+
+
+@st.cache_resource
+def benzerlik_modeli():
+    # "Benzer telefonlar": modeldeki 10 özelliği ölçeklendirip en yakın komşuları buluyoruz (KNN'in mesafe mantığı)
+    olcek = StandardScaler().fit(df[OZELLIKLER])
+    return olcek, NearestNeighbors(n_neighbors=25).fit(olcek.transform(df[OZELLIKLER]))
+
+
+def benzer_telefonlar(sira, adet=4):
+    olcek, komsular = benzerlik_modeli()
+    _, yakinlar = komsular.kneighbors(olcek.transform(df.loc[[sira], OZELLIKLER]))
+    ayni_model = df.at[sira, "temel_model"]
+    # Aynı modelin RAM/depolama varyantlarını atla, gerçekten başka telefonlar gelsin
+    secilen, gorulen = [], {ayni_model}
+    for i in yakinlar[0]:
+        if df.at[i, "temel_model"] not in gorulen:  # her modelden tek varyant
+            gorulen.add(df.at[i, "temel_model"])
+            secilen.append(i)
+    return df.loc[secilen[:adet]]
+
+
+def benzerler_html(sira, adet=4):
+    return ('<div class="mini-izgara">' + "".join(mini_kart(r) for r in benzer_telefonlar(sira, adet).itertuples())
+            + '</div>')
 
 
 def mini_kart(r):
@@ -771,6 +809,15 @@ st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer
 
 sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_hakkinda = st.tabs(
     ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "📊 Proje Hakkında"])
+# Katalogda ikinci telefona "Karşılaştır" basılınca sekmeyi sunucuyu beklemeden tarayıcıda hemen aç
+js_calistir("if(window.__karsHizli)return;window.__karsHizli=1;document.addEventListener('click',e=>{"
+            "const b=e.target.closest('button');if(!b||b.innerText.trim()!=='⚖️ Karşılaştır')return;"
+            "if(!document.body.innerText.includes('Karşılaştırmak için bir telefon daha seç'))return;"
+            "const t=document.querySelectorAll('[role=\"tab\"]');if(t.length>2){const s=t[2];"
+            "const o={bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',isPrimary:true,button:0};"
+            "s.dispatchEvent(new PointerEvent('pointerdown',o));s.dispatchEvent(new MouseEvent('mousedown',o));"
+            "s.dispatchEvent(new PointerEvent('pointerup',o));s.dispatchEvent(new MouseEvent('mouseup',o));"
+            "s.click();window.scrollTo({top:0,behavior:'smooth'});}},true);")
 # Sekme geçişi en başta gönderiliyor: sayfanın geri kalanı hazırlanırken sekme hemen açılıyor (donma hissi olmasın)
 if "_sekmeye_git" in st.session_state:
     sekmeye_gec(st.session_state.pop("_sekmeye_git"))
@@ -998,6 +1045,12 @@ with sekme_tahmin:
                             + '</div>', unsafe_allow_html=True)
                 if len(uyan) > 12:
                     st.caption("En beğenilen 12 tanesi gösteriliyor. RAM, depolama gibi özellikleri seçerek listeyi daralt.")
+                if secili:
+                    st.markdown(f'<div class="bolum" style="margin-top:1.2rem">🔍 {secili} telefonuna benzeyenler</div>',
+                                unsafe_allow_html=True)
+                    st.markdown(benzerler_html(gosterilecek.index[0]), unsafe_allow_html=True)
+                    st.caption("Donanımı en yakın 4 başka telefon. KNN'deki gibi özellikler ölçeklendirilip "
+                               "aralarındaki mesafeye bakılıyor.")
 
         # 3) Hiçbir şey girilmediyse yönlendirme
         if not hazir and not girilen and not kelimeler:
@@ -1220,6 +1273,14 @@ with sekme_karsilastir:
         st.markdown('<div class="bolum" style="margin-top:1rem">🕸️ Özellik haritası</div>', unsafe_allow_html=True)
         st.markdown(radar_svg([(a.isim, a, "#60a5fa"), (b.isim, b, "#f472b6")]), unsafe_allow_html=True)
         st.caption("Her eksen, o özelliğin 970 telefon arasındaki yerini gösterir: merkez en düşük, dış çember en yüksek.")
+    st.markdown('<div class="bolum" style="margin-top:1.2rem">🔍 Bunlara benzeyen telefonlar</div>',
+                unsafe_allow_html=True)
+    bz1, bz2 = st.columns(2, gap="large")
+    for kol, tel in [(bz1, a), (bz2, b)]:
+        with kol:
+            st.markdown(f"**{tel.isim}** gibi:")
+            st.markdown(benzerler_html(tel.name, 4), unsafe_allow_html=True)
+    st.caption("Donanımı en yakın telefonlar, KNN'deki mesafe mantığıyla (özellikler ölçeklendirilerek) bulunuyor.")
 
 # ------------------------------------------------------------
 # 4) Bütçeye göre öneri
@@ -1255,7 +1316,7 @@ with sekme_butce:
     with b1:
         butce = st.number_input("💰 Bütçen (TL)", min_value=1000, max_value=100000, value=None, step=1000,
                                 placeholder="ör. 15000", key="b_butce")
-        hk = st.columns(5)
+        hk = st.container(key="hizli_butce").columns(5)
         for kol, miktar in zip(hk, [7500, 10000, 15000, 20000, 30000]):
             kol.button(f"{miktar / 1000:g} bin".replace(".", ","), key=f"b_{miktar}", on_click=butce_ayarla, args=(miktar,),
                        use_container_width=True)

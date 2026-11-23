@@ -264,7 +264,7 @@ Mobile-Price-Range/
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
-| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (20 bölüm) |
+| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (23 bölüm: SVM, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python hâli |
 | `veri_inceleme_eda_gercek.ipynb` | Gerçek veri için keşifçi veri analizi (EDA): dağılımlar, segmentler, özelliklerin fiyata etkisi ve korelasyonlar (Gürkan Tural) |
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
@@ -368,10 +368,13 @@ Sentetik veriden sonra modeli **980 gerçek telefonun** gerçek satış fiyatlar
 | Random Forest | 0.7577 | 0.7544 | 0.7577 | 0.7533 | **0.7113** |
 | **XGBoost** | **0.7629** | **0.7596** | **0.7629** | **0.7580** | 0.6784 |
 | LightGBM | 0.7371 | 0.7330 | 0.7371 | 0.7284 | 0.6794 |
+| SVM (C=1, gamma=0.1, StandardScaler) | 0.7113 | 0.7074 | 0.7113 | 0.7074 | **0.7175** |
 
 **💡 Neler görüyoruz?**
 - Gerçek veride başarı sentetik veriye göre daha düşük (%94 yerine %75 civarı). Çünkü gerçek fiyat sadece donanıma değil, marka değerine, tasarıma ve pazarlamaya da bağlı.
 - Sentetik veride fiyatı neredeyse tek başına RAM belirliyor. Gerçek veride ise **işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü** birlikte önemli.
+- SVM'i de ekliyoruz. Test setinde %71 alıyor ama 5-fold CV'de **%71,75** ile Random Forest'ı (%71,13) az farkla geçiyor. Yani tek bir test bölmesine bakınca bir model, CV'ye bakınca başka bir model önde görünebiliyor. Bu yüzden ikisine birden bakıyoruz.
+- CatBoost'u da koda ekliyoruz ama kullandığımız Python sürümüne (3.15) henüz kurulamıyor. Kod, CatBoost kuruluysa onu da otomatik olarak eğitiyor, kurulu değilse atlıyor.
 - Bu sefer ölçeklendirme KNN'e yardım ediyor (F1: 0.62 → 0.66), çünkü gerçek veride tek bir özellik baskın değil.
 - Hatalar yine çoğunlukla yan yana segmentlerde (ör. Düşük ↔ Orta).
 - Veriyi incelerken 39 telefonda ekran çözünürlüğünün genişlik ve yüksekliğinin ters girildiğini fark ediyoruz (ör. 1080 × 2400 yerine 2400 × 1080). Bu telefonlarda iki değerin yerini değiştirip modelleri yeniden eğitiyoruz. Yukarıdaki tablo düzeltilmiş verinin sonuçları.
@@ -414,6 +417,43 @@ Random Forest eğitim verisini neredeyse ezberliyor (%96), test skoru ise %76 ci
 
 Random Forest'ın en önemli bulduğu 5 özellik: **işlemci hızı, depolama, hızlı şarj gücü, RAM ve ekran yüksekliği**. Sadece bu 5 özellikle model kurduğumuzda doğruluk **%75,77'den %68,04'e** düşüyor. Yani kalan özellikler (kamera, ekran boyutu, batarya, 5G gibi) tek başlarına zayıf olsalar da birlikte yaklaşık 8 puanlık katkı yapıyor.
 
+### 🌲 Hiperparametrelerin etkisi (Random Forest)
+
+GridSearchCV'nin denediği her kombinasyonun CV skorunu grafiğe döküyoruz. Ağaç sayısı 100'den 200'e çıkınca skor biraz artıyor, 300'de ise artış duruyor. Derinliği sınırsız bırakmak ya da 20 yapmak, 10 yapmaktan biraz daha iyi sonuç veriyor. Farklar küçük (0,760 – 0,769 arası), yani model hiperparametrelere çok hassas değil.
+
+| Ağaç sayısı | max_depth = 10 | max_depth = 20 | Sınırsız |
+| :---: | :---: | :---: | :---: |
+| 100 | 0,7597 | 0,7619 | 0,7633 |
+| 200 | 0,7611 | 0,7672 | **0,7686** |
+| 300 | 0,7611 | 0,7603 | 0,7615 |
+
+![Random Forest hiperparametre grafiği](v2_gercek_telefon_analizi/grafikler_gercek/rf_hiperparametre.png)
+
+### 🏷️ Marka bilgisini eklersek ne oluyor?
+
+Modelimiz şimdiye kadar sadece donanıma bakıyordu. "Marka değeri fiyatı etkiliyor" dediğimiz için markayı da (one-hot, 10'dan az telefonu olan markalar "Diğer" grubunda, toplam 18 sütun) modele ekleyip deniyoruz.
+
+| Özellikler | Test doğruluğu | 5-Fold CV |
+| :--- | :---: | :---: |
+| Sadece donanım | %75,77 | **%71,13** |
+| Donanım + marka | **%76,80** | %68,56 |
+
+Test setinde marka 1 puan kazandırıyor ama CV'de 2,5 puan kaybettiriyor. Yani markanın katkısı kararlı değil. Bunun sebebi, çoğu markanın az sayıda telefonu olması ve donanımın (özellikle işlemci) markayı zaten büyük ölçüde yansıtması. Markalar içinde en önemli bulunanlar Samsung, Apple ve Xiaomi. Bu yüzden sitede donanımla eğitilmiş modeli kullanmaya devam ediyoruz.
+
+![Marka bilgisinin etkisi](v2_gercek_telefon_analizi/grafikler_gercek/marka_etkisi.png)
+
+### 🔬 SHAP ile açıklanabilirlik
+
+Feature Importance bize "hangi özellik önemli" diyor ama özelliğin fiyatı yukarı mı aşağı mı ittiğini söylemiyor. Bunun için **SHAP** kullanıyoruz. SHAP, her tahmin için her özelliğin o tahmine ne kadar katkı yaptığını hesaplıyor.
+
+- Ortalama etkide ilk sıralar: **işlemci hızı (0,078), depolama (0,046), RAM (0,039), hafıza kartı desteği (0,035) ve hızlı şarj (0,033)**. Feature Importance ile büyük ölçüde aynı sonucu veriyor, bu da bulgularımızı doğruluyor.
+- İşlemci hızının etkisi en çok "Çok yüksek" segmentte görülüyor. Hafıza kartı desteğinin olmaması ise telefonu pahalı segmente itiyor (pahalı telefonlarda genelde kart yuvası yok).
+- Örnek: **Apple iPhone 11 Pro Max** için model %70 ihtimalle "Çok yüksek" diyor. Bunu en çok işlemci hızı (+0,22), ekran çözünürlüğü (+0,09) ve hafıza kartı desteğinin olmaması (+0,09) sağlıyor. 64 GB depolama ve 4 GB RAM ise tahmini biraz aşağı çekiyor.
+
+![SHAP özet grafiği](v2_gercek_telefon_analizi/grafikler_gercek/shap_ozet.png)
+
+![SHAP örnek telefon](v2_gercek_telefon_analizi/grafikler_gercek/shap_ornek_telefon.png)
+
 ### ❌ Hata analizi
 
 Random Forest test setindeki 194 telefonun **47'sinde** yanılıyor. En sık karışan durumlar:
@@ -443,14 +483,15 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 - En iyi modelin `.pkl` olarak kaydedilmesi
 - Aynı analizin 980 gerçek telefonla tekrarlanması (v2)
 - Gerçek veride ters girilmiş 39 ekran çözünürlüğünün düzeltilmesi ve modellerin yeniden eğitilmesi
+- v2'ye SVM, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
 - **TeknoTahmin** web sitesi (Streamlit + Docker, Render'da yayında)
 - Sitenin hızlandırılması ve UptimeRobot ile sürekli açık tutulması
 
 ### 🔭 Sonraki adımlar
-- `CatBoost` ve `SVM` modellerini de eklemek.
+- `CatBoost`'u, kullandığımız Python sürümüne kurulabildiğinde sonuçlara eklemek.
 - `RandomizedSearchCV` ile daha geniş bir parametre aralığını daha hızlı taramak.
 - Daha fazla ve daha güncel telefon verisi toplayarak modeli büyütmek (öğrenme eğrisi daha fazla veriyle başarının artacağını gösteriyor).
-- Marka bilgisini de modele katıp donanım dışı etkenlerin fiyata etkisini ölçmek.
+- Marka bilgisini daha çok veriyle tekrar denemek (şu an CV'de kararlı bir katkısı yok).
 - Fiyatları Türkiye'deki gerçek satış fiyatlarıyla karşılaştırmak.
 
 ---
@@ -482,9 +523,11 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **PDF rapor:** Tahmin sonucunu (özellikler, tahmin edilen segment, güven, olasılıklar ve "Neden bu segment?" açıklaması) tek tıkla PDF olarak indirebiliyorsun.
 - **Karşılaştırma PDF'i:** Karşılaştır sekmesinde seçtiğin iki telefonun özellik tablosunu (hangi özellikte hangisinin önde olduğu yeşille işaretli), gerçek segmentlerini ve modelin tahminlerini PDF olarak indirebiliyorsun.
 - **Bütçe listesi PDF'i:** Bütçeme Göre sekmesinde bütçene ve önceliğine uyan en iyi 10 telefonu puanları, özellikleri ve en güçlü yanlarıyla birlikte PDF olarak indirebiliyorsun. Mağazaya giderken ya da arkadaşına atarken işe yarıyor.
+- **Benzer telefonlar:** Fiyat Tahmini'nde bir model seçince ve Karşılaştır sekmesinde, donanımı en yakın 4 başka telefon gösteriliyor. KNN'deki mantıkla özellikleri ölçeklendirip telefonlar arasındaki mesafeye bakıyoruz.
+- **Anında karşılaştırma:** Katalogda ikinci telefona "⚖️ Karşılaştır" deyince sekme sunucuyu beklemeden tarayıcıda hemen (yaklaşık 0,15 saniyede) açılıyor, tablo arkadan doluyor.
 - **Paylaşma linki:** Bir telefon modeli seçip tahmin aldıktan sonra "🔗 Paylaş" ile bir link çıkıyor. Bu linki açan kişi aynı telefonu, aynı RAM/depolamayı ve aynı modelin tahminini görüyor.
 - **Canlı model grafikleri:** Proje Hakkında sekmesindeki özellik önemi ve karışıklık matrisi, sitedeki modelden anlık olarak hesaplanıyor.
-- **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor.
+- **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor. Telefonda kenar boşlukları azalıyor, büyük yazılar küçülüyor, hazır bütçe butonları tek satıra sığıyor.
 - **TL fiyatlar:** Veri setindeki Hindistan Rupisi fiyatları TL'ye çevrilerek gösteriliyor.
 **Modeller:** Sitede 10 donanım özelliğiyle eğitilmiş üç model var. Varsayılan model Random Forest (test doğruluğu yaklaşık **%74**). Model seçiciden XGBoost (yaklaşık **%75**) ya da KNN (k=5, yaklaşık **%69**) da seçilebiliyor.
 
@@ -574,7 +617,7 @@ Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başlıyoruz (e
 
 - **v1 veri seti:** [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)
 - **v2 veri seti:** [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) (Smartprix verisi), kullandığımız kopya: [Hugging Face](https://huggingface.co/datasets/jason1966/abhijitdahatonde_real-world-smartphones-dataset)
-- **Kütüphaneler:** [Scikit-learn](https://scikit-learn.org), [Pandas](https://pandas.pydata.org), [NumPy](https://numpy.org), [Matplotlib](https://matplotlib.org), [Seaborn](https://seaborn.pydata.org), [XGBoost](https://xgboost.readthedocs.io), [LightGBM](https://lightgbm.readthedocs.io), [Streamlit](https://streamlit.io)
+- **Kütüphaneler:** [Scikit-learn](https://scikit-learn.org), [Pandas](https://pandas.pydata.org), [NumPy](https://numpy.org), [Matplotlib](https://matplotlib.org), [Seaborn](https://seaborn.pydata.org), [XGBoost](https://xgboost.readthedocs.io), [LightGBM](https://lightgbm.readthedocs.io), [Streamlit](https://streamlit.io), [SHAP](https://shap.readthedocs.io)
 - **Yayınlama:** [Docker](https://www.docker.com), [Render](https://render.com), [UptimeRobot](https://uptimerobot.com)
 - **Marka logoları:** [Simple Icons](https://simpleicons.org) (CC0)
 - **Döviz kuru:** XE orta kur, 19 Kasım 2026 (1 ₹ ≈ 0,54 TL)

@@ -164,7 +164,7 @@ y_pred_rf = rf_model.predict(X_test)
 print("En iyi parametreler:", grid.best_params_)
 
 # ------------------------------------------------------------
-print("\n--- 9. Ek Karşılaştırma: XGBoost ve LightGBM ---")
+print("\n--- 9. Ek Karşılaştırma: XGBoost, LightGBM, CatBoost ve SVM ---")
 ek_modeller, ek_tahminler = {}, {}
 try:
     from xgboost import XGBClassifier
@@ -178,8 +178,21 @@ try:
                                              verbose=-1).fit(X_train, y_train)
 except ImportError:
     print("[ATLANDI] lightgbm kurulu değil")
+try:
+    from catboost import CatBoostClassifier
+    ek_modeller["CatBoost"] = CatBoostClassifier(iterations=500, depth=6, learning_rate=0.05, random_seed=42,
+                                                 verbose=0).fit(X_train, y_train)
+except ImportError:
+    print("[ATLANDI] catboost kurulu değil (pip install catboost)")
+# SVM: mesafeye dayalı olduğu için KNN gibi ölçeklendirme şart, C ve gamma'yı CV ile seçiyoruz
+from sklearn.svm import SVC
+svm_grid = GridSearchCV(make_pipeline(StandardScaler(), SVC(random_state=42)),
+                        {"svc__C": [0.1, 1, 10, 100], "svc__gamma": ["scale", 0.01, 0.1]},
+                        cv=5, scoring="f1_weighted", n_jobs=-1).fit(X_train, y_train)
+ek_modeller["SVM"] = svm_grid.best_estimator_
+print("SVM en iyi parametreler:", svm_grid.best_params_)
 for ad, m in ek_modeller.items():
-    ek_tahminler[ad] = m.predict(X_test)
+    ek_tahminler[ad] = np.asarray(m.predict(X_test)).ravel()
     print(f"[BAŞARILI] {ad} eğitildi.")
 
 # ------------------------------------------------------------
@@ -287,3 +300,81 @@ RandomForestClassifier(**grid.best_params_, random_state=42).fit(X_train, y_trai
 print(f"Random Forest eğitim süresi: {time.perf_counter() - t0:.3f} saniye")
 joblib.dump(rf_model, TABAN / "en_iyi_model_gercek.pkl")
 print("[BAŞARILI] en_iyi_model_gercek.pkl kaydedildi. Grafikler 'grafikler_gercek' klasöründe.")
+
+# ------------------------------------------------------------
+print("\n--- 21. Hiperparametrelerin Etkisi (Random Forest) ---")
+# GridSearch sonuçlarından: ağaç sayısı ve derinlik değiştikçe CV skoru nasıl değişiyor?
+cv_tablo = pd.DataFrame(grid.cv_results_["params"]).assign(skor=grid.cv_results_["mean_test_score"])
+cv_tablo = cv_tablo[cv_tablo["min_samples_split"] == grid.best_params_["min_samples_split"]]
+cv_tablo["max_depth"] = cv_tablo["max_depth"].fillna(0).astype(int).astype(str).replace("0", "Sınırsız")
+print(cv_tablo.pivot(index="n_estimators", columns="max_depth", values="skor").round(4).to_string())
+plt.figure(figsize=(7, 4))
+for derinlik, grup in cv_tablo.groupby("max_depth"):
+    plt.plot(grup["n_estimators"], grup["skor"], marker="o", label=f"max_depth = {derinlik}")
+plt.title("Random Forest: Ağaç Sayısı ve Derinliğe Göre CV F1-Score")
+plt.xlabel("Ağaç sayısı (n_estimators)")
+plt.ylabel("CV F1-Score")
+plt.legend()
+plt.grid(alpha=0.3)
+kaydet("rf_hiperparametre.png")
+
+# ------------------------------------------------------------
+print("\n--- 22. Marka Bilgisi Eklenince Ne Oluyor? ---")
+# Model şimdiye kadar sadece donanıma bakıyordu. Markayı (one-hot) ekleyip aynı Random Forest'ı tekrar eğitiyoruz.
+# 10'dan az telefonu olan markalar "Diğer" grubunda toplanıyor.
+sayilar = df["brand_name"].value_counts()
+marka = df["brand_name"].where(df["brand_name"].map(sayilar) >= 10, "Diğer")
+X_marka = pd.concat([X, pd.get_dummies(marka, prefix="marka", dtype=int)], axis=1)
+Xm_train, Xm_test = X_marka.loc[X_train.index], X_marka.loc[X_test.index]
+rf_marka = RandomForestClassifier(**grid.best_params_, random_state=42).fit(Xm_train, y_train)
+acc_donanim = accuracy_score(y_test, y_pred_rf)
+acc_marka = accuracy_score(y_test, rf_marka.predict(Xm_test))
+cv_donanim = cross_val_score(RandomForestClassifier(**grid.best_params_, random_state=42), X, y, cv=5, n_jobs=-1).mean()
+cv_marka = cross_val_score(RandomForestClassifier(**grid.best_params_, random_state=42), X_marka, y, cv=5, n_jobs=-1).mean()
+print(f"Marka sayısı (one-hot): {marka.nunique()}")
+print(f"Sadece donanım  -> Test: %{acc_donanim * 100:.2f} | CV: %{cv_donanim * 100:.2f}")
+print(f"Donanım + marka -> Test: %{acc_marka * 100:.2f} | CV: %{cv_marka * 100:.2f}")
+marka_onem = pd.Series(rf_marka.feature_importances_, index=X_marka.columns)
+print("En önemli marka sütunları:")
+print(marka_onem[marka_onem.index.str.startswith("marka_")].sort_values(ascending=False).head(5).round(4).to_string())
+plt.figure(figsize=(6, 4))
+cubuk = plt.bar(["Sadece donanım", "Donanım + marka"], [cv_donanim * 100, cv_marka * 100], color=["#7c3aed", "#16a34a"])
+plt.bar_label(cubuk, fmt="%%%.1f")
+plt.ylim(50, 100)
+plt.title("Marka Bilgisinin Etkisi (5-Fold CV Accuracy)")
+plt.ylabel("Accuracy (%)")
+kaydet("marka_etkisi.png")
+
+# ------------------------------------------------------------
+print("\n--- 23. SHAP ile Açıklanabilirlik (Random Forest) ---")
+# Feature importance "hangi özellik önemli" diyor; SHAP ise her tahmin için hangi özelliğin fiyatı
+# yukarı ya da aşağı ittiğini gösteriyor.
+try:
+    import shap
+    explainer = shap.TreeExplainer(rf_model)
+    shap_deger = explainer(X_test)  # boyut: telefon × özellik × sınıf
+    ortalama_etki = pd.Series(np.abs(shap_deger.values).mean(axis=(0, 2)), index=OZELLIKLER).sort_values(ascending=False)
+    print("Ortalama |SHAP| etkisi (tüm sınıflar):")
+    print(ortalama_etki.round(4).to_string())
+
+    plt.figure()
+    shap.summary_plot([shap_deger.values[:, :, i] for i in range(4)], X_test, class_names=SEGMENT_ADLARI,
+                      plot_type="bar", show=False)
+    plt.title("SHAP: Özelliklerin Segmentlere Göre Ortalama Etkisi")
+    kaydet("shap_ozet.png")
+
+    plt.figure()
+    shap.summary_plot(shap_deger.values[:, :, 3], X_test, show=False)
+    plt.title("SHAP: \"Çok yüksek\" Segmentine Etki (her nokta bir telefon)")
+    kaydet("shap_cok_yuksek.png")
+
+    # Tek bir telefonun tahmini nasıl oluştu?
+    ornek = int(np.where(y_test.values == 3)[0][0])
+    tel = df.loc[X_test.index[ornek]]
+    print(f"Örnek telefon: {tel['model']} ({tel['price']:,.0f} ₹), tahmin: {SEGMENT_ADLARI[y_pred_rf[ornek]]}")
+    plt.figure()
+    shap.plots.waterfall(shap_deger[ornek, :, int(y_pred_rf[ornek])], show=False)
+    plt.title(f"SHAP: {tel['model']} neden \"{SEGMENT_ADLARI[y_pred_rf[ornek]]}\"?")
+    kaydet("shap_ornek_telefon.png")
+except ImportError:
+    print("[ATLANDI] shap kurulu değil (pip install shap)")
