@@ -771,6 +771,9 @@ st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer
 
 sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_hakkinda = st.tabs(
     ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "📊 Proje Hakkında"])
+# Sekme geçişi en başta gönderiliyor: sayfanın geri kalanı hazırlanırken sekme hemen açılıyor (donma hissi olmasın)
+if "_sekmeye_git" in st.session_state:
+    sekmeye_gec(st.session_state.pop("_sekmeye_git"))
 
 # ------------------------------------------------------------
 # 1) Tahmin
@@ -936,10 +939,11 @@ with sekme_tahmin:
                                ("5G", "Var" if g5 else "Yok")]
             p1, p2 = st.columns(2)
             p1.download_button("📄 PDF olarak indir",
-                               data=tahmin_pdf(baslik, ozellik_listesi, algo, secili_dogruluk, olas, sinif,
-                                               gercek_fiyat, neden_verisi(girdi, sinif, secili_model)),
+                               # PDF sadece butona basınca hazırlanıyor (her yenilemede değil, site hızlı kalsın)
+                               data=lambda a=(baslik, ozellik_listesi, algo, secili_dogruluk, olas, sinif, gercek_fiyat,
+                                              girdi, secili_model): tahmin_pdf(*a[:7], neden_verisi(a[7], a[5], a[8])),
                                file_name=f"TeknoTahmin_{(secili or 'tahmin').replace(' ', '_')}.pdf",
-                               mime="application/pdf", use_container_width=True)
+                               mime="application/pdf", on_click="ignore", use_container_width=True)
             if secili:
                 with p2.popover("🔗 Paylaş", use_container_width=True):
                     taban_url = (st.context.url or "https://teknotahmin-0iji.onrender.com/").split("?")[0]
@@ -1209,9 +1213,9 @@ with sekme_karsilastir:
             yb = tl(b[s]) if s == "price" else f"{b[s]:g}{br}"
             kazanan = None if a[s] == b[s] else (0 if (a[s] > b[s]) == iyi else 1)
             pdf_satirlari.append((et, ya, yb, kazanan))
-        st.download_button("📄 Karşılaştırmayı PDF olarak indir", data=karsilastirma_pdf(a, b, pdf_satirlari),
+        st.download_button("📄 Karşılaştırmayı PDF olarak indir", data=lambda a=a, b=b, s=pdf_satirlari: karsilastirma_pdf(a, b, s),
                            file_name=f"TeknoTahmin_karsilastirma_{a.isim[:25]}_{b.isim[:25]}.pdf".replace(" ", "_"),
-                           mime="application/pdf", key="pdf_kars")
+                           mime="application/pdf", key="pdf_kars", on_click="ignore")
     with radar_kol:
         st.markdown('<div class="bolum" style="margin-top:1rem">🕸️ Özellik haritası</div>', unsafe_allow_html=True)
         st.markdown(radar_svg([(a.isim, a, "#60a5fa"), (b.isim, b, "#f472b6")]), unsafe_allow_html=True)
@@ -1306,9 +1310,9 @@ with sekme_butce:
                 guclu_yazi = ", ".join(f"{OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}" for s in guclu)
                 pdf_telefonlar.append((r, r.puan, guclu_yazi, r.tahmin > r.segment))
             st.download_button("📄 Bu listeyi PDF olarak indir (en iyi 10 telefon)",
-                               data=butce_pdf(butce, oncelik.split(" ", 1)[1], len(aday), pdf_telefonlar),
+                               data=lambda a=(butce, oncelik.split(" ", 1)[1], len(aday), pdf_telefonlar): butce_pdf(*a),
                                file_name=f"TeknoTahmin_butce_{int(butce)}_TL.pdf", mime="application/pdf",
-                               key="pdf_butce")
+                               key="pdf_butce", on_click="ignore")
 
 # ------------------------------------------------------------
 # 5) Proje hakkında
@@ -1412,8 +1416,6 @@ st.markdown('<div class="not">Telefon bilgileri ve fiyatları: Smartprix (Hindis
             unsafe_allow_html=True)
 
 # Sayfa içi yönlendirmeler (görünmez küçük betikler)
-if "_sekmeye_git" in st.session_state:
-    sekmeye_gec(st.session_state.pop("_sekmeye_git"))
 # Telefonda yeni bir tahmin çıkınca sonuç kartına kaydır (form uzun olduğu için kart aşağıda kalıyor)
 if tahmin_imzasi is not None and st.session_state.get("_son_tahmin") != tahmin_imzasi:
     st.session_state["_son_tahmin"] = tahmin_imzasi

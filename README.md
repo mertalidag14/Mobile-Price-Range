@@ -565,6 +565,7 @@ Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başlıyoruz (e
 | Ölçeklendirme v1'de KNN'i bozuyor, v2'de iyileştiriyor | İki durumu da raporlayıp nedenini açıklıyoruz (v1'de RAM'in baskın olması) |
 | Render'ın ücretsiz planında site 15 dakika boş kalınca uyuyor ve ilk açılış uzun sürüyor | UptimeRobot ile siteye 5 dakikada bir girip onu uyanık tutuyoruz |
 | Sitede marka logolarına basınca ve katalogda karşılaştırırken sayfa yavaşlıyor | Logoları gerçek butona çevirip, katalog kartlarını sayfanın geri kalanından ayrı yenilenecek şekilde düzenliyoruz |
+| Katalogda iki telefon seçilince Karşılaştır sekmesi hâlâ birkaç saniye donuyor (her yenilemede PDF raporlar da baştan hazırlanıyordu) | PDF'leri sadece indirme butonuna basınca hazırlatıyoruz, sekme geçişini de sayfanın en başına alıyoruz. Geçiş süresi yaklaşık 3 kat kısalıyor |
 | Kullanıcı elle değer yazınca gerçekte olmayan değerler girebiliyor | Bütün özellikleri veri setindeki değerlerden oluşan açılır listelere çeviriyoruz |
 
 ---
