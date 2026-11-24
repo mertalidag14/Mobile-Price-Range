@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py logolar.py gercek_telefonlar.csv ./
 COPY .streamlit ./.streamlit
 COPY fontlar ./fontlar
-# Kendi algoritmamız ZANEDUSCV (github.com/mertalidag14/ZANEDUSCV) dosyaları
+# Mert Ali Dağ'ın algoritması ZANEDUSCV (github.com/mertalidag14/ZANEDUSCV) dosyaları
 COPY zaneduscv ./zaneduscv
 
 # Render, uygulamanın dinlemesi gereken portu PORT değişkeniyle verir

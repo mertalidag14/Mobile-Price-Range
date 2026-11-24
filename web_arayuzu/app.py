@@ -18,7 +18,7 @@ from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-from zaneduscv import ZANEDUSCVClassifier  # kendi algoritmamız: github.com/mertalidag14/ZANEDUSCV
+from zaneduscv import ZANEDUSCVClassifier  # Mert Ali Dağ'ın algoritması: github.com/mertalidag14/ZANEDUSCV
 
 from logolar import LOGOLAR
 
@@ -358,7 +358,7 @@ def model_egit():
 
 @st.cache_resource
 def ek_modeller():
-    # Sitedeki model seçici için KNN, XGBoost ve kendi algoritmamız ZANEDUSCV
+    # Sitedeki model seçici için KNN, XGBoost ve Mert Ali Dağ'ın algoritması ZANEDUSCV
     # (Random Forest ile aynı 10 özellik ve aynı eğitim/test bölmesi)
     df, _ = veri_yukle()
     X, y = df[OZELLIKLER], df["segment"]
@@ -1423,10 +1423,10 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 | **XGBoost** | **%76.3** | **0.758** | %67.8 |
 | LightGBM | %73.7 | 0.728 | %67.9 |
 | CatBoost | %73.7 | 0.731 | %71.1 |
-| **ZANEDUSCV** (bizim algoritmamız) | %73.7 | 0.731 | %70.0 |
+| **ZANEDUSCV** (Mert Ali Dağ'ın algoritması) | %73.7 | 0.731 | %70.0 |
 | SVM | %71.1 | 0.707 | **%71.8** |
 
-- **ZANEDUSCV:** Kendi yazdığımız, sadece NumPy kullanan bir gradient boosting algoritması. Ağaçları eğik bölmelerle
+- **ZANEDUSCV:** Mert Ali Dağ'ın sıfırdan yazdığı, sadece NumPy kullanan bir gradient boosting algoritması. Ağaçları eğik bölmelerle
   kuruyor, yapraklarda sabit sayı yerine küçük bir doğrusal model kullanıyor. Kodu:
   [github.com/mertalidag14/ZANEDUSCV](https://github.com/mertalidag14/ZANEDUSCV). Sitedeki model seçiciden de deneyebilirsin.
 
@@ -1438,7 +1438,7 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 
 #### 🛠️ Kullanılan yazılımlar ve teknolojiler
 - **Python** · **Pandas, NumPy** (veri işleme) · **Matplotlib, Seaborn** (grafikler)
-- **Scikit-learn** (KNN, Random Forest, SVM, GridSearchCV) · **XGBoost, LightGBM, CatBoost** · **ZANEDUSCV** (kendi algoritmamız)
+- **Scikit-learn** (KNN, Random Forest, SVM, GridSearchCV) · **XGBoost, LightGBM, CatBoost** · **ZANEDUSCV** (Mert Ali Dağ)
 - **Jupyter Notebook, VS Code** (geliştirme ortamı)
 - **Streamlit, HTML/CSS, SVG** (bu web sitesi) · **Docker** + **Render** (yayınlama)
 - **Git & GitHub** (sürüm kontrolü, kanban tablosu)

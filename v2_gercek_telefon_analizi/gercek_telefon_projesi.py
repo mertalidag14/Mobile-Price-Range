@@ -184,7 +184,7 @@ try:
                                                  verbose=0).fit(X_train, y_train)
 except ImportError:
     print("[ATLANDI] catboost kurulu değil (pip install catboost)")
-# ZANEDUSCV: kendi yazdığımız, eğik bölmeli ve lineer yapraklı gradient boosting algoritması
+# ZANEDUSCV: Mert Ali Dağ'ın geliştirdiği, eğik bölmeli ve lineer yapraklı gradient boosting algoritması
 # (https://github.com/mertalidag14/ZANEDUSCV, sadece numpy ile yazıldı). Algoritmanın dosyaları bu klasördeki
 # zaneduscv/ klasöründe, ayrıca kurmak gerekmiyor.
 from zaneduscv import ZANEDUSCVClassifier
