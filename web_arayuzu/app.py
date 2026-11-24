@@ -18,6 +18,7 @@ from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
+from zaneduscv import ZANEDUSCVClassifier  # kendi algoritmamız: github.com/mertalidag14/ZANEDUSCV
 
 from logolar import LOGOLAR
 
@@ -357,7 +358,8 @@ def model_egit():
 
 @st.cache_resource
 def ek_modeller():
-    # Sitedeki model seçici için KNN ve XGBoost (Random Forest ile aynı 10 özellik ve aynı eğitim/test bölmesi)
+    # Sitedeki model seçici için KNN, XGBoost ve kendi algoritmamız ZANEDUSCV
+    # (Random Forest ile aynı 10 özellik ve aynı eğitim/test bölmesi)
     df, _ = veri_yukle()
     X, y = df[OZELLIKLER], df["segment"]
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
@@ -368,7 +370,8 @@ def ek_modeller():
     xgb_ayar = dict(n_estimators=300, max_depth=4, learning_rate=0.1, subsample=0.9, colsample_bytree=0.9,
                     random_state=42, n_jobs=1)
     sonuc = {}
-    for ad, yeni in [(f"KNN (k={k})", lambda: knn), ("XGBoost", lambda: XGBClassifier(**xgb_ayar))]:
+    for ad, yeni in [(f"KNN (k={k})", lambda: knn), ("XGBoost", lambda: XGBClassifier(**xgb_ayar)),
+                     ("ZANEDUSCV", lambda: ZANEDUSCVClassifier(random_state=0))]:
         dogruluk = yeni().fit(X_tr, y_tr).score(X_te, y_te)
         sonuc[ad] = (yeni().fit(X, y), dogruluk)  # sitede tüm veriyle eğitilmiş hâli kullanılıyor
     return sonuc
@@ -964,7 +967,7 @@ with sekme_tahmin:
                 f'{neden_bu_segment(girdi, sinif, secili_model)}</div>', unsafe_allow_html=True)
             tahmin_imzasi = tuple(girdi.iloc[0].round(3))
 
-            # Üç model aynı telefon için ne diyor?
+            # Bütün modeller aynı telefon için ne diyor?
             satirlar = ""
             for ad_m, (mdl, dog) in MODELLER.items():
                 o = mdl.predict_proba(girdi)[0]
@@ -972,7 +975,7 @@ with sekme_tahmin:
                 satirlar += (f'<tr{" class=secili" if ad_m == algo else ""}><td>{ad_m}</td>'
                              f'<td style="color:{SEGMENTLER[s][2]};font-weight:800">{SEGMENTLER[s][1]} {SEGMENTLER[s][0]}</td>'
                              f'<td>%{o[s] * 100:.0f}</td><td>%{dog * 100:.0f}</td></tr>')
-            st.markdown('<div class="bolum" style="margin-top:1rem">🤖 Üç model ne diyor?</div>'
+            st.markdown('<div class="bolum" style="margin-top:1rem">🤖 Modeller ne diyor?</div>'
                         '<table class="tablo model-tablo"><tr><th>Model</th><th>Tahmin</th><th>Güven</th>'
                         f'<th>Test doğruluğu</th></tr>{satirlar}</table>', unsafe_allow_html=True)
 
@@ -1419,6 +1422,13 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 | Random Forest | %75.8 | 0.753 | **%71.1** |
 | **XGBoost** | **%76.3** | **0.758** | %67.8 |
 | LightGBM | %73.7 | 0.728 | %67.9 |
+| CatBoost | %73.7 | 0.731 | %71.1 |
+| **ZANEDUSCV** (bizim algoritmamız) | %73.7 | 0.731 | %70.0 |
+| SVM | %71.1 | 0.707 | **%71.8** |
+
+- **ZANEDUSCV:** Kendi yazdığımız, sadece NumPy kullanan bir gradient boosting algoritması. Ağaçları eğik bölmelerle
+  kuruyor, yapraklarda sabit sayı yerine küçük bir doğrusal model kullanıyor. Kodu:
+  [github.com/mertalidag14/ZANEDUSCV](https://github.com/mertalidag14/ZANEDUSCV). Sitedeki model seçiciden de deneyebilirsin.
 
 - **Bu sitedeki model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu
   **%{DOGRULUK * 100:.1f}**. Cross-validation'da en kararlı model olduğu için seçildi.
@@ -1428,7 +1438,7 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 
 #### 🛠️ Kullanılan yazılımlar ve teknolojiler
 - **Python** · **Pandas, NumPy** (veri işleme) · **Matplotlib, Seaborn** (grafikler)
-- **Scikit-learn** (KNN, Random Forest, GridSearchCV) · **XGBoost, LightGBM**
+- **Scikit-learn** (KNN, Random Forest, SVM, GridSearchCV) · **XGBoost, LightGBM, CatBoost** · **ZANEDUSCV** (kendi algoritmamız)
 - **Jupyter Notebook, VS Code** (geliştirme ortamı)
 - **Streamlit, HTML/CSS, SVG** (bu web sitesi) · **Docker** + **Render** (yayınlama)
 - **Git & GitHub** (sürüm kontrolü, kanban tablosu)

@@ -164,7 +164,7 @@ y_pred_rf = rf_model.predict(X_test)
 print("En iyi parametreler:", grid.best_params_)
 
 # ------------------------------------------------------------
-print("\n--- 9. Ek Karşılaştırma: XGBoost, LightGBM, CatBoost ve SVM ---")
+print("\n--- 9. Ek Karşılaştırma: XGBoost, LightGBM, CatBoost, ZANEDUSCV ve SVM ---")
 ek_modeller, ek_tahminler = {}, {}
 try:
     from xgboost import XGBClassifier
@@ -184,6 +184,11 @@ try:
                                                  verbose=0).fit(X_train, y_train)
 except ImportError:
     print("[ATLANDI] catboost kurulu değil (pip install catboost)")
+# ZANEDUSCV: kendi yazdığımız, eğik bölmeli ve lineer yapraklı gradient boosting algoritması
+# (https://github.com/mertalidag14/ZANEDUSCV, sadece numpy ile yazıldı). Algoritmanın dosyaları bu klasördeki
+# zaneduscv/ klasöründe, ayrıca kurmak gerekmiyor.
+from zaneduscv import ZANEDUSCVClassifier
+ek_modeller["ZANEDUSCV"] = ZANEDUSCVClassifier(random_state=0).fit(X_train, y_train)
 # SVM: mesafeye dayalı olduğu için KNN gibi ölçeklendirme şart, C ve gamma'yı CV ile seçiyoruz
 from sklearn.svm import SVC
 svm_grid = GridSearchCV(make_pipeline(StandardScaler(), SVC(random_state=42)),
@@ -378,3 +383,40 @@ try:
     kaydet("shap_ornek_telefon.png")
 except ImportError:
     print("[ATLANDI] shap kurulu değil (pip install shap)")
+
+# ------------------------------------------------------------
+print("\n--- 24. Bütün Modellerin Karşılaştırma Grafiği ---")
+karsilastirma = pd.DataFrame({
+    "Test": sonuc_df["Accuracy"].values,
+    "5-Fold CV": [cv_sonuc[ad.split(" (")[0]]["CV Ortalama"] for ad in sonuc_df.index],
+}, index=[ad.split(" (")[0] for ad in sonuc_df.index]) * 100
+print(karsilastirma.round(2).to_string())
+ax = karsilastirma.plot(kind="bar", figsize=(9, 4.5), color=["#7c3aed", "#f472b6"], width=0.75)
+for kap in ax.containers:
+    ax.bar_label(kap, fmt="%.1f", fontsize=7)
+plt.ylim(50, 85)
+plt.ylabel("Accuracy (%)")
+plt.title("Modellerin Test ve 5-Fold CV Doğruluğu (gerçek telefon verisi)")
+plt.xticks(rotation=0)
+plt.grid(axis="y", alpha=0.3)
+kaydet("model_karsilastirma.png")
+
+if "ZANEDUSCV" in ek_modeller:
+    zane = ek_modeller["ZANEDUSCV"]
+    zane_onem = zane.get_feature_importance().sort_values(ascending=False)
+    print(f"ZANEDUSCV {zane.best_iteration_} ağaç kullandı. En önemli 5 özellik:")
+    print(zane_onem.head(5).round(4).to_string())
+    plt.figure(figsize=(8, 6))
+    sns.barplot(x=zane_onem.values, y=zane_onem.index, color="#7c3aed")
+    plt.title("ZANEDUSCV - Özellik Önemi")
+    plt.xlabel("Önem Skoru")
+    kaydet("zaneduscv_ozellik_onemi.png")
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    for ax, baslik, p in zip(axes, ["Random Forest", "ZANEDUSCV"], [y_pred_rf, ek_tahminler["ZANEDUSCV"]]):
+        sns.heatmap(confusion_matrix(y_test, p), annot=True, fmt="d", cmap="Purples", ax=ax,
+                    xticklabels=SEGMENT_ADLARI, yticklabels=SEGMENT_ADLARI)
+        ax.set_title(f"{baslik} - Confusion Matrix")
+        ax.set_xlabel("Tahmin Edilen")
+        ax.set_ylabel("Gerçek")
+    kaydet("zaneduscv_confusion_matrix.png")

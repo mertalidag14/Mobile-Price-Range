@@ -4,6 +4,8 @@ Bu projede bir telefonun donanım özelliklerine (RAM, depolama, batarya, işlem
 
 🌐 Site: **https://teknotahmin-0iji.onrender.com**
 
+🔗 **Bağlantılı proje: [ZANEDUSCV](https://github.com/mertalidag14/ZANEDUSCV).** Karşılaştırdığımız modellerden biri kendi yazdığımız algoritma. ZANEDUSCV, sadece NumPy ile sıfırdan yazdığımız, eğik bölmeli ve lineer yapraklı bir gradient boosting algoritması. Bu projede onu hem analizde diğer modellerle yarıştırıyoruz hem de sitedeki model seçiciye ekliyoruz.
+
 ---
 
 ## 📌 Problem
@@ -264,8 +266,9 @@ Mobile-Price-Range/
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
-| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (23 bölüm: SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
+| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (24 bölüm: ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python hâli |
+| `zaneduscv/` | Kendi algoritmamız ZANEDUSCV'nin dosyaları ([ZANEDUSCV deposundan](https://github.com/mertalidag14/ZANEDUSCV) kopyalandı) |
 | `veri_inceleme_eda_gercek.ipynb` | Gerçek veri için keşifçi veri analizi (EDA): dağılımlar, segmentler, özelliklerin fiyata etkisi ve korelasyonlar (Gürkan Tural) |
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
 | `grafikler_gercek/` | Gerçek veriyle çizilen grafikler |
@@ -281,6 +284,7 @@ Mobile-Price-Range/
 | `Dockerfile` | Sitenin Render'da Docker ile çalışması için kurulum dosyası |
 | `.streamlit/config.toml` | Tema ve hız ayarları |
 | `fontlar/` | PDF raporda Türkçe karakterler için DejaVu fontu (açık lisanslı) |
+| `zaneduscv/` | Sitedeki model seçicide kullanılan kendi algoritmamız ZANEDUSCV'nin dosyaları |
 
 ---
 
@@ -369,6 +373,7 @@ Sentetik veriden sonra modeli **980 gerçek telefonun** gerçek satış fiyatlar
 | **XGBoost** | **0.7629** | **0.7596** | **0.7629** | **0.7580** | 0.6784 |
 | LightGBM | 0.7371 | 0.7330 | 0.7371 | 0.7284 | 0.6794 |
 | CatBoost | 0.7371 | 0.7331 | 0.7371 | 0.7307 | 0.7113 |
+| **ZANEDUSCV** (bizim algoritmamız) | 0.7371 | 0.7355 | 0.7371 | 0.7305 | 0.7000 |
 | SVM (C=1, gamma=0.1, StandardScaler) | 0.7113 | 0.7074 | 0.7113 | 0.7074 | **0.7175** |
 
 **💡 Neler görüyoruz?**
@@ -376,6 +381,8 @@ Sentetik veriden sonra modeli **980 gerçek telefonun** gerçek satış fiyatlar
 - Sentetik veride fiyatı neredeyse tek başına RAM belirliyor. Gerçek veride ise **işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü** birlikte önemli.
 - SVM'i de ekliyoruz. Test setinde %71 alıyor ama 5-fold CV'de **%71,75** ile Random Forest'ı (%71,13) az farkla geçiyor. Yani tek bir test bölmesine bakınca bir model, CV'ye bakınca başka bir model önde görünebiliyor. Bu yüzden ikisine birden bakıyoruz.
 - CatBoost'u da ekliyoruz. Testte LightGBM ile aynı (%73,7), CV'de ise Random Forest ile aynı (%71,13) sonucu veriyor. CatBoost bilgisayarımızdaki Python 3.15'e henüz kurulamadığı için analizi Python 3.12 ortamında çalıştırıyoruz (kod, CatBoost kurulu değilse onu atlayıp devam ediyor).
+- **Kendi algoritmamız ZANEDUSCV'yi de yarıştırıyoruz.** Testte %73,7 ile LightGBM ve CatBoost'la aynı yerde, 5-fold CV'de %70,0 ile XGBoost ve LightGBM'i (%67,8 – %67,9) geçiyor, Random Forest ve CatBoost'un (%71,1) biraz arkasında kalıyor. Sıfırdan, sadece NumPy ile yazılmış bir algoritmanın hazır kütüphanelerle bu kadar yakın sonuç vermesi bizim için güzel bir sonuç. Kodu ve nasıl çalıştığı [ZANEDUSCV deposunda](https://github.com/mertalidag14/ZANEDUSCV) anlatılıyor.
+- ZANEDUSCV'nin algoritma dosyalarını (`zaneduscv/` klasörü) doğrudan bu projenin içine, hem `v2_gercek_telefon_analizi/` hem de `web_arayuzu/` klasörüne koyuyoruz. Böylece ayrıca bir şey kurmadan analiz de site de çalışıyor. Algoritma sklearn ile uyumlu olduğu için `cross_val_score` ve `GridSearchCV` ile de kullanılabiliyor.
 - Bu sefer ölçeklendirme KNN'e yardım ediyor (F1: 0.62 → 0.66), çünkü gerçek veride tek bir özellik baskın değil.
 - Hatalar yine çoğunlukla yan yana segmentlerde (ör. Düşük ↔ Orta).
 - Veriyi incelerken 39 telefonda ekran çözünürlüğünün genişlik ve yüksekliğinin ters girildiğini fark ediyoruz (ör. 1080 × 2400 yerine 2400 × 1080). Bu telefonlarda iki değerin yerini değiştirip modelleri yeniden eğitiyoruz. Yukarıdaki tablo düzeltilmiş verinin sonuçları.
@@ -417,6 +424,16 @@ Random Forest eğitim verisini neredeyse ezberliyor (%96), test skoru ise %76 ci
 ### ✂️ Sadece en önemli 5 özellikle model
 
 Random Forest'ın en önemli bulduğu 5 özellik: **işlemci hızı, depolama, hızlı şarj gücü, RAM ve ekran yüksekliği**. Sadece bu 5 özellikle model kurduğumuzda doğruluk **%75,77'den %68,04'e** düşüyor. Yani kalan özellikler (kamera, ekran boyutu, batarya, 5G gibi) tek başlarına zayıf olsalar da birlikte yaklaşık 8 puanlık katkı yapıyor.
+
+### 📊 Bütün modellerin karşılaştırması
+
+![Model karşılaştırma grafiği](v2_gercek_telefon_analizi/grafikler_gercek/model_karsilastirma.png)
+
+ZANEDUSCV'nin en önemli bulduğu özellikler işlemci hızı, RAM, hafıza kartı desteği, 5G ve ön kamera. Random Forest ile büyük ölçüde aynı özelliklere bakıyor.
+
+![ZANEDUSCV özellik önemi](v2_gercek_telefon_analizi/grafikler_gercek/zaneduscv_ozellik_onemi.png)
+
+![Random Forest ve ZANEDUSCV confusion matrix](v2_gercek_telefon_analizi/grafikler_gercek/zaneduscv_confusion_matrix.png)
 
 ### 🌲 Hiperparametrelerin etkisi (Random Forest)
 
@@ -484,7 +501,7 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 - En iyi modelin `.pkl` olarak kaydedilmesi
 - Aynı analizin 980 gerçek telefonla tekrarlanması (v2)
 - Gerçek veride ters girilmiş 39 ekran çözünürlüğünün düzeltilmesi ve modellerin yeniden eğitilmesi
-- v2'ye SVM, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
+- v2'ye kendi algoritmamız ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
 - **TeknoTahmin** web sitesi (Streamlit + Docker, Render'da yayında)
 - Sitenin hızlandırılması ve UptimeRobot ile sürekli açık tutulması
 
@@ -518,7 +535,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Tıklanabilir marka logoları:** Üstteki marka şeridinde bir logoya basınca katalog o markanın telefonlarıyla açılıyor.
 - **Katalogdan karşılaştırma:** Kartlardaki "⚖️ Karşılaştır" butonuyla iki telefon seçilince site kendiliğinden Karşılaştır sekmesine geçiyor.
 - **Radar grafik:** Karşılaştır sekmesinde iki telefonun RAM, depolama, batarya, şarj, işlemci, ekran, yenileme hızı ve kamerası, 970 telefon içindeki yerine göre üst üste çiziliyor.
-- **Model seçici:** Tahmini Random Forest, KNN ya da XGBoost'a yaptırabiliyorsun. Altındaki "Üç model ne diyor?" tablosunda aynı telefon için üç modelin tahmini, güveni ve test doğruluğu yan yana görünüyor. Analizde karşılaştırdığımız modeller sitede de canlı karşılaştırılabiliyor.
+- **Model seçici:** Tahmini Random Forest, KNN, XGBoost ya da kendi algoritmamız **ZANEDUSCV**'ye yaptırabiliyorsun. Altındaki "Modeller ne diyor?" tablosunda aynı telefon için dört modelin tahmini, güveni ve test doğruluğu yan yana görünüyor. Analizde karşılaştırdığımız modeller sitede de canlı karşılaştırılabiliyor.
 - **Bütçeye göre öneri:** Bütçeni yazınca ya da hazır bütçelerden (7,5 / 10 / 15 / 20 / 30 bin TL) birine basınca, seçtiğin önceliğe göre en iyi telefonlar puanlarıyla ve "en güçlü yanlarıyla" listeleniyor. Modelin donanımına bakıp gerçek fiyatından daha üst bir segment tahmin ettiği telefonlarda "🔥 Fiyatına göre güçlü" rozeti çıkıyor. 5G ve marka filtresi de var.
 - **PDF rapor:** Tahmin sonucunu (özellikler, tahmin edilen segment, güven, olasılıklar ve "Neden bu segment?" açıklaması) tek tıkla PDF olarak indirebiliyorsun.
 - **Karşılaştırma PDF'i:** Karşılaştır sekmesinde seçtiğin iki telefonun özellik tablosunu (hangi özellikte hangisinin önde olduğu yeşille işaretli), gerçek segmentlerini ve modelin tahminlerini PDF olarak indirebiliyorsun.
@@ -529,11 +546,11 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Canlı model grafikleri:** Proje Hakkında sekmesindeki özellik önemi ve karışıklık matrisi, sitedeki modelden anlık olarak hesaplanıyor.
 - **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor. Telefonda kenar boşlukları azalıyor, büyük yazılar küçülüyor, hazır bütçe butonları tek satıra sığıyor.
 - **TL fiyatlar:** Veri setindeki Hindistan Rupisi fiyatları TL'ye çevrilerek gösteriliyor.
-**Modeller:** Sitede 10 donanım özelliğiyle eğitilmiş üç model var. Varsayılan model Random Forest (test doğruluğu yaklaşık **%74**). Model seçiciden XGBoost (yaklaşık **%75**) ya da KNN (k=5, yaklaşık **%69**) da seçilebiliyor.
+**Modeller:** Sitede 10 donanım özelliğiyle eğitilmiş dört model var. Varsayılan model Random Forest (test doğruluğu yaklaşık **%74**). Model seçiciden XGBoost (yaklaşık **%75**), KNN (k=5, yaklaşık **%69**) ya da kendi algoritmamız ZANEDUSCV (yaklaşık **%74**) da seçilebiliyor.
 
 ### 📸 Ekran Görüntüleri
 
-**🔮 Fiyat Tahmini:** Hızlı dene butonları, model seçici (Random Forest / KNN / XGBoost), tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
+**🔮 Fiyat Tahmini:** Hızlı dene butonları, model seçici (Random Forest / KNN / XGBoost / ZANEDUSCV), tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
 
 ![TeknoTahmin – Fiyat Tahmini](https://drive.google.com/thumbnail?id=1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd&sz=w1600)
 
@@ -617,7 +634,7 @@ Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başlıyoruz (e
 
 - **v1 veri seti:** [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)
 - **v2 veri seti:** [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) (Smartprix verisi), kullandığımız kopya: [Hugging Face](https://huggingface.co/datasets/jason1966/abhijitdahatonde_real-world-smartphones-dataset)
-- **Kütüphaneler:** [Scikit-learn](https://scikit-learn.org), [Pandas](https://pandas.pydata.org), [NumPy](https://numpy.org), [Matplotlib](https://matplotlib.org), [Seaborn](https://seaborn.pydata.org), [XGBoost](https://xgboost.readthedocs.io), [LightGBM](https://lightgbm.readthedocs.io), [CatBoost](https://catboost.ai), [Streamlit](https://streamlit.io), [SHAP](https://shap.readthedocs.io)
+- **Kütüphaneler:** [Scikit-learn](https://scikit-learn.org), [Pandas](https://pandas.pydata.org), [NumPy](https://numpy.org), [Matplotlib](https://matplotlib.org), [Seaborn](https://seaborn.pydata.org), [XGBoost](https://xgboost.readthedocs.io), [LightGBM](https://lightgbm.readthedocs.io), [CatBoost](https://catboost.ai), [ZANEDUSCV](https://github.com/mertalidag14/ZANEDUSCV) (kendi algoritmamız), [Streamlit](https://streamlit.io), [SHAP](https://shap.readthedocs.io)
 - **Yayınlama:** [Docker](https://www.docker.com), [Render](https://render.com), [UptimeRobot](https://uptimerobot.com)
 - **Marka logoları:** [Simple Icons](https://simpleicons.org) (CC0)
 - **Döviz kuru:** XE orta kur, 19 Kasım 2026 (1 ₹ ≈ 0,54 TL)
