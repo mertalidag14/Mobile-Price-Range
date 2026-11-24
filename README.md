@@ -97,9 +97,9 @@ Projede iki veri seti kullanıyoruz. İlk analizi Kaggle'daki sentetik veri seti
 
 | Üye | Ne yapıyor? |
 | :--- | :--- |
-| **Mert Ali Dağ** | **Kodlama, modeller ve web sitesi.** Veri ön işleme adımlarını kuruyor, KNN ve Random Forest kodlarını yazıyor, hiperparametre ayarlarını yapıyor ve model sonuçlarını yorumluyor. XGBoost/LightGBM karşılaştırmasını, cross-validation'ı ve hata analizini ekliyor. Projeyi 980 gerçek telefonluk veri setine taşıyıp bütün analizi bu veriyle tekrarlıyor (v2) ve gerçek veride ters girilmiş ekran çözünürlüklerini düzeltiyor. **TeknoTahmin** sitesini (Streamlit, HTML/CSS) tasarlayıp kodluyor: telefon adıyla arama, hızlı deneme butonları, "Neden bu segment?" açıklaması, fiyat cetveli, model seçici, katalog, filtreler, karşılaştırma, radar grafik, bütçeye göre öneri, PDF rapor ve paylaşma linki. Siteyi Docker ile paketleyip Render'da yayınlıyor. GitHub deposunu, README'yi, UML diyagramlarını ve kanban tablosunu düzenliyor. |
-| **Gürkan Tural** | **Veri analizi.** Ham veriyi temizliyor, keşifçi veri analizini (EDA) yapıyor, donanım özellikleri arasındaki korelasyonları inceliyor ve bulguları anlaşılır grafiklerle gösteriyor. EDA notebook'unu (`v1_kaggle_analizi/veri_inceleme_eda.ipynb`) hazırlıyor: satır/sütun sayıları, veri tipleri ve özet istatistikler, fiyat segmentlerinin dağılımı, RAM, batarya ve ekran çözünürlüğünün fiyata etkisi ve korelasyon ısı haritası. Gerçek telefon verisi (v2) için de aynı incelemeyi `v2_gercek_telefon_analizi/veri_inceleme_eda_gercek.ipynb` notebook'unda yapıyor. Veri setinden örnek kayıtları (`Proje İçin Kullanılan Veri Seti Örneği`) derliyor ve veri setinin kaynağını belgeliyor. EDA'da çıkan sonuçlar (en belirleyici özelliklerin RAM, batarya ve çözünürlük olması) modelleme kısmına yön veriyor. |
-| **Efe Erdem** | **Araştırma ve raporlama.** Sınıflandırma problemine benzer çalışmaları ve farklı yaklaşımları araştırıyor, sonuçları raporluyor ve proje belgelerini hazırlıyor. Literatür araştırmasını (`Literatur_Arastirmasi.md`) yazıyor: Kaggle'daki benzer mobil fiyat çalışmalarını ve akademik makaleleri inceliyor, kullanılan algoritmaları (SVM, KNN, Logistic Regression, ANN/DNN, ağaç tabanlı modeller) ve başarı oranlarını bir tabloda karşılaştırıyor. Ön işleme adımlarını anlatan belgeyi (`Veri_On_Isleme.md`) ve veri kalitesi sorunlarını inceleyen hata ayıklama raporunu (`Veri_seti_hata_ayıklama_raporu.md`) yazıyor. Gerçek telefon verisi (v2) için de bir hata ayıklama raporu (`Yeni veri seti ayıklama raporu.md`) hazırlıyor. Belgelerin düzenli kalmasını ve sonuçların raporlanmasını sağlıyor. |
+| **Mert Ali Dağ** | **Kodlama, modeller ve web sitesi.** Ön işlemeyi, KNN, Random Forest ve diğer modelleri kodluyor, v2 analizini yapıyor. TeknoTahmin sitesini yazıp Render'da yayınlıyor. GitHub deposunu, README'yi ve kanban tablosunu düzenliyor. |
+| **Gürkan Tural** | **Veri analizi.** Veriyi temizliyor ve keşifçi veri analizini (EDA) yapıyor. v1 ve v2 için EDA notebook'larını (`veri_inceleme_eda.ipynb`, `veri_inceleme_eda_gercek.ipynb`) hazırlıyor. |
+| **Efe Erdem** | **Araştırma ve raporlama.** Literatür araştırmasını, ön işleme belgesini ve v1/v2 veri hata ayıklama raporlarını yazıyor. |
 
 ---
 
@@ -264,7 +264,7 @@ Mobile-Price-Range/
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
-| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (23 bölüm: SVM, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
+| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (23 bölüm: SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python hâli |
 | `veri_inceleme_eda_gercek.ipynb` | Gerçek veri için keşifçi veri analizi (EDA): dağılımlar, segmentler, özelliklerin fiyata etkisi ve korelasyonlar (Gürkan Tural) |
 | `sonuclar_gercek.csv`, `cv_sonuclari_gercek.csv` | Gerçek veriyle model sonuçları |
@@ -368,13 +368,14 @@ Sentetik veriden sonra modeli **980 gerçek telefonun** gerçek satış fiyatlar
 | Random Forest | 0.7577 | 0.7544 | 0.7577 | 0.7533 | **0.7113** |
 | **XGBoost** | **0.7629** | **0.7596** | **0.7629** | **0.7580** | 0.6784 |
 | LightGBM | 0.7371 | 0.7330 | 0.7371 | 0.7284 | 0.6794 |
+| CatBoost | 0.7371 | 0.7331 | 0.7371 | 0.7307 | 0.7113 |
 | SVM (C=1, gamma=0.1, StandardScaler) | 0.7113 | 0.7074 | 0.7113 | 0.7074 | **0.7175** |
 
 **💡 Neler görüyoruz?**
 - Gerçek veride başarı sentetik veriye göre daha düşük (%94 yerine %75 civarı). Çünkü gerçek fiyat sadece donanıma değil, marka değerine, tasarıma ve pazarlamaya da bağlı.
 - Sentetik veride fiyatı neredeyse tek başına RAM belirliyor. Gerçek veride ise **işlemci hızı, depolama, RAM, hızlı şarj gücü ve ekran çözünürlüğü** birlikte önemli.
 - SVM'i de ekliyoruz. Test setinde %71 alıyor ama 5-fold CV'de **%71,75** ile Random Forest'ı (%71,13) az farkla geçiyor. Yani tek bir test bölmesine bakınca bir model, CV'ye bakınca başka bir model önde görünebiliyor. Bu yüzden ikisine birden bakıyoruz.
-- CatBoost'u da koda ekliyoruz ama kullandığımız Python sürümüne (3.15) henüz kurulamıyor. Kod, CatBoost kuruluysa onu da otomatik olarak eğitiyor, kurulu değilse atlıyor.
+- CatBoost'u da ekliyoruz. Testte LightGBM ile aynı (%73,7), CV'de ise Random Forest ile aynı (%71,13) sonucu veriyor. CatBoost bilgisayarımızdaki Python 3.15'e henüz kurulamadığı için analizi Python 3.12 ortamında çalıştırıyoruz (kod, CatBoost kurulu değilse onu atlayıp devam ediyor).
 - Bu sefer ölçeklendirme KNN'e yardım ediyor (F1: 0.62 → 0.66), çünkü gerçek veride tek bir özellik baskın değil.
 - Hatalar yine çoğunlukla yan yana segmentlerde (ör. Düşük ↔ Orta).
 - Veriyi incelerken 39 telefonda ekran çözünürlüğünün genişlik ve yüksekliğinin ters girildiğini fark ediyoruz (ör. 1080 × 2400 yerine 2400 × 1080). Bu telefonlarda iki değerin yerini değiştirip modelleri yeniden eğitiyoruz. Yukarıdaki tablo düzeltilmiş verinin sonuçları.
@@ -488,7 +489,6 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 - Sitenin hızlandırılması ve UptimeRobot ile sürekli açık tutulması
 
 ### 🔭 Sonraki adımlar
-- `CatBoost`'u, kullandığımız Python sürümüne kurulabildiğinde sonuçlara eklemek.
 - `RandomizedSearchCV` ile daha geniş bir parametre aralığını daha hızlı taramak.
 - Daha fazla ve daha güncel telefon verisi toplayarak modeli büyütmek (öğrenme eğrisi daha fazla veriyle başarının artacağını gösteriyor).
 - Marka bilgisini daha çok veriyle tekrar denemek (şu an CV'de kararlı bir katkısı yok).
@@ -617,7 +617,7 @@ Projeye Kaggle'daki **Mobile Price Classification** veri setiyle başlıyoruz (e
 
 - **v1 veri seti:** [Kaggle – Mobile Price Classification](https://www.kaggle.com/datasets/iabhishekofficial/mobile-price-classification)
 - **v2 veri seti:** [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) (Smartprix verisi), kullandığımız kopya: [Hugging Face](https://huggingface.co/datasets/jason1966/abhijitdahatonde_real-world-smartphones-dataset)
-- **Kütüphaneler:** [Scikit-learn](https://scikit-learn.org), [Pandas](https://pandas.pydata.org), [NumPy](https://numpy.org), [Matplotlib](https://matplotlib.org), [Seaborn](https://seaborn.pydata.org), [XGBoost](https://xgboost.readthedocs.io), [LightGBM](https://lightgbm.readthedocs.io), [Streamlit](https://streamlit.io), [SHAP](https://shap.readthedocs.io)
+- **Kütüphaneler:** [Scikit-learn](https://scikit-learn.org), [Pandas](https://pandas.pydata.org), [NumPy](https://numpy.org), [Matplotlib](https://matplotlib.org), [Seaborn](https://seaborn.pydata.org), [XGBoost](https://xgboost.readthedocs.io), [LightGBM](https://lightgbm.readthedocs.io), [CatBoost](https://catboost.ai), [Streamlit](https://streamlit.io), [SHAP](https://shap.readthedocs.io)
 - **Yayınlama:** [Docker](https://www.docker.com), [Render](https://render.com), [UptimeRobot](https://uptimerobot.com)
 - **Marka logoları:** [Simple Icons](https://simpleicons.org) (CC0)
 - **Döviz kuru:** XE orta kur, 19 Kasım 2026 (1 ₹ ≈ 0,54 TL)
