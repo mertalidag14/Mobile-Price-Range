@@ -266,7 +266,7 @@ Mobile-Price-Range/
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
-| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (26 bölüm: ZANEDUSCV, ensemble, fiyat regresyonu, SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
+| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (27 bölüm: kalibrasyon, ZANEDUSCV, ensemble, fiyat regresyonu, SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python hâli |
 | `zaneduscv/` | Mert Ali Dağ'ın geliştirdiği ZANEDUSCV algoritmasının dosyaları ([ZANEDUSCV deposundan](https://github.com/mertalidag14/ZANEDUSCV) kopyalandı) |
 | `veri_inceleme_eda_gercek.ipynb` | Gerçek veri için keşifçi veri analizi (EDA): dağılımlar, segmentler, özelliklerin fiyata etkisi ve korelasyonlar (Gürkan Tural) |
@@ -463,6 +463,21 @@ Fiyat tahmininde en iyi sonucu Mert Ali Dağ'ın geliştirdiği ZANEDUSCV veriyo
 
 ![Gerçek ve tahmin edilen fiyat](v2_gercek_telefon_analizi/grafikler_gercek/fiyat_regresyon.png)
 
+### 🎯 Model güveni gerçekten doğru mu? (Kalibrasyon)
+
+Sitede her tahminin yanında "Random Forest güveni: %98" gibi bir yüzde çıkıyor. Bu yüzdenin gerçekten doğru olup olmadığını kontrol ediyoruz: test setindeki tahminleri güvene göre gruplara ayırıp her grubun ortalama güveniyle gerçek doğruluğunu karşılaştırıyoruz. ECE (beklenen kalibrasyon hatası) bu ikisi arasındaki ortalama fark, 0'a ne kadar yakınsa model kendi güveni konusunda o kadar dürüst.
+
+| Model | Ortalama güven | Gerçek doğruluk | ECE |
+| :--- | :---: | :---: | :---: |
+| **Random Forest** | %73,9 | %75,8 | **0,033** |
+| ZANEDUSCV | %79,6 | %73,7 | 0,055 |
+| XGBoost | %85,3 | %76,3 | 0,120 |
+| KNN | %82,6 | %70,6 | 0,120 |
+
+Random Forest'ın güveni gerçeğe en yakın, yani "%80 eminim" dediğinde gerçekten yaklaşık %80 doğru çıkıyor. XGBoost ve KNN ise kendilerinden olduğundan fazla emin (yaklaşık 10 puan fazla). Sitede varsayılan modelin Random Forest olmasının bir sebebi de bu.
+
+![Kalibrasyon grafiği](v2_gercek_telefon_analizi/grafikler_gercek/kalibrasyon.png)
+
 ### 🌲 Hiperparametrelerin etkisi (Random Forest)
 
 GridSearchCV'nin denediği her kombinasyonun CV skorunu grafiğe döküyoruz. Ağaç sayısı 100'den 200'e çıkınca skor biraz artıyor, 300'de ise artış duruyor. Derinliği sınırsız bırakmak ya da 20 yapmak, 10 yapmaktan biraz daha iyi sonuç veriyor. Farklar küçük (0,760 – 0,769 arası), yani model hiperparametrelere çok hassas değil.
@@ -529,7 +544,7 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 - En iyi modelin `.pkl` olarak kaydedilmesi
 - Aynı analizin 980 gerçek telefonla tekrarlanması (v2)
 - Gerçek veride ters girilmiş 39 ekran çözünürlüğünün düzeltilmesi ve modellerin yeniden eğitilmesi
-- v2'ye ensemble (oylama), TL fiyat tahmini (regresyon), Mert Ali Dağ'ın algoritması ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
+- v2'ye kalibrasyon analizi, ensemble (oylama), TL fiyat tahmini (regresyon), Mert Ali Dağ'ın algoritması ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
 - **TeknoTahmin** web sitesi (Streamlit + Docker, Render'da yayında)
 - Sitenin hızlandırılması ve UptimeRobot ile sürekli açık tutulması
 
@@ -550,6 +565,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **⚖️ Karşılaştır:** İki gerçek telefonu yan yana koyuyor (gerçek segment ve modelin tahmini dahil) ve özelliklerini bir radar grafikte gösteriyor.
 - **💰 Bütçeme Göre:** Bütçeni ve önceliğini (dengeli, performans, kamera, batarya, depolama) seçince o fiyata kadar olan telefonları özelliklerine göre 100 üzerinden puanlayıp en iyi 6 tanesini gösteriyor.
 - **🧭 Telefon Önerici:** Bütçe, kullanım amacı (oyun, fotoğraf, günlük, iş), pil önemi, ekran büyüklüğü, 5G ve marka tercihi soruluyor. Cevaplara göre 970 telefon arasından en uygun 3 telefon, puanları, neden önerildikleri ve donanımlarına göre fiyatlarının uygun olup olmadığıyla birlikte gösteriliyor. Öneriler, verilen cevaplarla birlikte PDF olarak da indirilebiliyor.
+- **🏷️ Markalar:** En az 10 telefonu olan 17 marka; telefon sayısı, ortalama fiyat, ortalama donanım puanı, 5G oranı, segment dağılımı ve "marka primi" (gerçek fiyatın, donanıma göre beklenen fiyata oranı) ile "fiyatını en çok hak eden marka" sıralaması.
 - **📊 Proje Hakkında:** Yöntem, ekip, model sonuçları ve modelin grafikleri (özellik önemi, karışıklık matrisi).
 
 ### ✨ Sitenin öne çıkan özellikleri
@@ -580,6 +596,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Aydınlık / karanlık tema:** Sağ üstteki ⚙️ Görünüm menüsünden aydınlık temaya geçilebiliyor.
 - **Erişilebilirlik:** Aynı menüde 🔍 Büyük yazı modu (bütün yazılar yaklaşık %20 büyüyor) ve 🌀 Animasyonları kapatma seçeneği var. Sayfanın dili ekran okuyucular için Türkçe olarak ayarlı, tahmin sonucu değişince ekran okuyucu yeni sonucu sesli okuyor.
 - **🎤 Sesli arama:** Fiyat Tahmini'nde "Sesli ara" butonuna basıp "Samsung A54 ne kadar?" gibi söyleyince telefon adı kendiliğinden yazılıyor ve tahmin çıkıyor. Tarayıcının konuşma tanıma özelliğini kullanıyor (Chrome ve Edge'de çalışıyor, mikrofon izni istiyor).
+- **📸 Ekran görüntüsünden tanıma:** Fiyat Tahmini'nde "Ekran görüntüsünden tanı" butonuyla telefonun "Ayarlar › Telefon hakkında" ekranının görüntüsü yükleniyor. Görüntüdeki yazı tarayıcıda Tesseract.js ile okunuyor, telefon modeli 970 telefonluk listeyle eşleştiriliyor, RAM ve depolama da bulunup tahmin kendiliğinden açılıyor. Görüntü sunucuya gönderilmiyor.
 - **TL fiyatlar:** Veri setindeki Hindistan Rupisi fiyatları TL'ye çevrilerek gösteriliyor.
 **Modeller:** Sitede 10 donanım özelliğiyle eğitilmiş dört model var. Varsayılan model Random Forest (test doğruluğu yaklaşık **%74**). Model seçiciden XGBoost (yaklaşık **%75**), KNN (k=5, yaklaşık **%69**) ya da Mert Ali Dağ'ın geliştirdiği ZANEDUSCV (yaklaşık **%74**) da seçilebiliyor.
 
@@ -613,6 +630,11 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 **🧭 Telefon Önerici:** Birkaç soruya göre en uygun 3 telefon
 
 ![TeknoTahmin – Telefon Önerici](ekran_goruntuleri/6_telefon_onerici.jpg)
+
+
+**🏷️ Markalar:** Markaların fiyat/performans karşılaştırması ve marka primi sıralaması
+
+![TeknoTahmin – Markalar](ekran_goruntuleri/7_markalar.jpg)
 
 
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatları. Sitede bunları 1 ₹ ≈ 0,54 TL

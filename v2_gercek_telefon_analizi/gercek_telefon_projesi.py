@@ -492,3 +492,36 @@ print("\nDonanımına göre en pahalı satılan 5 telefon (marka etkisi):")
 print(fark.sort_values("fark %", ascending=False).head(5).to_string(index=False))
 print("\nDonanımına göre en ucuz kalan 5 telefon (fırsat):")
 print(fark.sort_values("fark %").head(5).to_string(index=False))
+
+# ------------------------------------------------------------
+print("\n--- 27. Model Güveni Gerçekten Doğru mu? (Kalibrasyon) ---")
+# Model "%90 eminim" dediğinde gerçekten yaklaşık %90 doğru çıkıyor mu? Test setindeki tahminleri güvene göre
+# 5 gruba ayırıp her grubun ortalama güvenini gerçek doğruluğuyla karşılaştırıyoruz (güvenilirlik diyagramı).
+# ECE (beklenen kalibrasyon hatası): güven ile doğruluk arasındaki ortalama fark; 0'a ne kadar yakınsa o kadar iyi.
+kal_modelleri = {"Random Forest": rf_model, "XGBoost": ek_modeller["XGBoost"], "ZANEDUSCV": ek_modeller["ZANEDUSCV"],
+                 "KNN": knn_model}
+gruplar = np.linspace(0.25, 1.0, 6)
+plt.figure(figsize=(6.5, 6))
+plt.plot([0.25, 1], [0.25, 1], "--", color="gray", label="Mükemmel kalibrasyon")
+kal_sonuc = {}
+for (ad, m), renk in zip(kal_modelleri.items(), ["#7c3aed", "#f472b6", "#10b981", "#f59e0b"]):
+    olas = m.predict_proba(X_test)
+    guven = olas.max(axis=1)
+    dogru = (olas.argmax(axis=1) == y_test.values).astype(float)
+    grup = np.clip(np.digitize(guven, gruplar) - 1, 0, len(gruplar) - 2)
+    xs, ys, ece = [], [], 0.0
+    for g in range(len(gruplar) - 1):
+        secim = grup == g
+        if secim.sum() >= 3:
+            xs.append(guven[secim].mean())
+            ys.append(dogru[secim].mean())
+            ece += secim.mean() * abs(guven[secim].mean() - dogru[secim].mean())
+    kal_sonuc[ad] = {"Ortalama güven": guven.mean(), "Gerçek doğruluk": dogru.mean(), "ECE": ece}
+    plt.plot(xs, ys, marker="o", color=renk, label=f"{ad} (ECE {ece:.3f})")
+print(pd.DataFrame(kal_sonuc).T.round(3).to_string())
+plt.xlabel("Modelin güveni (ortalama)")
+plt.ylabel("Gerçek doğruluk")
+plt.title("Model Güveni Gerçekten Doğru mu? (Kalibrasyon)")
+plt.legend(fontsize=8)
+plt.grid(alpha=0.3)
+kaydet("kalibrasyon.png")

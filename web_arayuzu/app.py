@@ -4,6 +4,7 @@
 # Çalıştırma: streamlit run app.py
 # ============================================================
 import base64
+import json
 import math
 import random
 from pathlib import Path
@@ -314,9 +315,15 @@ animation: acilis-kay 1.4s ease-in-out infinite; }}
 @keyframes acilis-yan {{ 0%, 100% {{ opacity: .45; }} 30% {{ opacity: 1; border-color: #c4b5fd; }} }}
 @keyframes acilis-kay {{ 0% {{ transform: translateX(-110%); }} 100% {{ transform: translateX(320%); }} }}
 @media (prefers-reduced-motion: reduce) {{ .acilis * {{ animation: none !important; }} }}
+.marka-serit {{ display: flex; height: 12px; border-radius: 99px; overflow: hidden; min-width: 160px; }}
+.marka-serit span {{ display: block; }}
+.marka-tablo td, .marka-tablo th {{ padding: .45rem .5rem; }}
 .sesli {{ display: flex; align-items: center; gap: .7rem; margin: -.4rem 0 .6rem; flex-wrap: wrap; }}
 .sesli button {{ font: inherit; font-size: .85rem; font-weight: 700; color: #fff; cursor: pointer; padding: .3rem .85rem;
 border-radius: 99px; border: 1px solid rgba(196,181,253,.6); background: linear-gradient(135deg, rgba(167,139,250,.28), rgba(244,114,182,.18)); }}
+.foto-buton {{ font-size: .85rem; font-weight: 700; color: #fff; cursor: pointer; padding: .3rem .85rem; border-radius: 99px;
+border: 1px solid rgba(147,197,253,.6); background: linear-gradient(135deg, rgba(96,165,250,.28), rgba(167,139,250,.18)); }}
+#foto-durum {{ font-size: .8rem; color: rgba(255,255,255,.65); }}
 .sesli button:disabled {{ opacity: .5; cursor: not-allowed; }}
 .sesli button.dinliyor {{ animation: sesli-nabiz 1s ease-in-out infinite; }}
 @keyframes sesli-nabiz {{ 50% {{ box-shadow: 0 0 0 8px rgba(244,114,182,.25); }} }}
@@ -994,9 +1001,9 @@ with st.container(horizontal=True, key="marka_seridi", gap="small"):
         st.button(etiket, key=f"mb_{i}", on_click=marka_tikla, args=(m,), help=f"{m} telefonlarını göster")
 st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer kaplamaz
 
-sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_hakkinda = st.tabs(
+sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_markalar, sekme_hakkinda = st.tabs(
     ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "🧭 Telefon Önerici",
-     "📊 Proje Hakkında"])
+     "🏷️ Markalar", "📊 Proje Hakkında"])
 # Katalogda ikinci telefona "Karşılaştır" basılınca sekmeyi sunucuyu beklemeden tarayıcıda hemen aç
 js_calistir("if(window.__karsHizli)return;window.__karsHizli=1;document.addEventListener('click',e=>{"
             "const b=e.target.closest('button');if(!b||b.innerText.trim()!=='⚖️ Karşılaştır')return;"
@@ -1048,6 +1055,38 @@ with sekme_tahmin:
             "i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));i.blur();};"
             "r.onerror=e=>{d.textContent=e.error==='not-allowed'?'Mikrofon izni verilmedi.':'Ses alınamadı, tekrar dene.';};"
             "r.onend=()=>b.classList.remove('dinliyor');r.start();};})();</script>",
+            unsafe_allow_javascript=True)
+        # "Telefonunu tanı": Ayarlar > Telefon hakkında ekran görüntüsündeki yazıyı tarayıcıda (Tesseract.js) okuyup
+        # telefon modelini, RAM'i ve depolamayı bulur; paylaşma linkindeki gibi ?tel=&ram=&depo= ile tahmini açar
+        st.html(
+            '<div class="sesli foto"><label for="foto-sec" class="foto-buton" role="button" tabindex="0" '
+            'aria-label="Ekran görüntüsünden telefonu tanı">📸 Ekran görüntüsünden tanı</label>'
+            '<input id="foto-sec" type="file" accept="image/*" style="display:none">'
+            '<span id="foto-durum" role="status" aria-live="polite">Ayarlar › Telefon hakkında ekranının görüntüsünü yükle</span></div>'
+            "<script>(()=>{const g=document.getElementById('foto-sec');const d=document.getElementById('foto-durum');"
+            "if(!g||g.dataset.hazir)return;g.dataset.hazir=1;"
+            f"const MODELLER={json.dumps(sorted(df['temel_model'].unique().tolist()), ensure_ascii=False)};"
+            "const yukle=()=>new Promise((ok,hata)=>{if(window.Tesseract)return ok();const s=document.createElement('script');"
+            "s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=ok;s.onerror=hata;"
+            "document.head.appendChild(s);});"
+            "const sade=x=>x.toLowerCase().replace(/[^a-z0-9ğüşıöç+ ]/g,' ').replace(/ +/g,' ').trim();"
+            "const bul=metin=>{const m=' '+sade(metin)+' ';let en=null,enSkor=0;for(const ad of MODELLER){"
+            "const k=sade(ad).split(' ');const govde=k.length>1?k.slice(1):k;"
+            "if(govde.every(w=>m.includes(' '+w+' '))){const skor=govde.join(' ').length+(m.includes(' '+k[0]+' ')?5:0);"
+            "if(skor>enSkor){enSkor=skor;en=ad;}}}return en;};"
+            "const sayi=(metin,kalip)=>{const r=metin.match(kalip);return r?r[1]:null;};"
+            "g.onchange=async()=>{const f=g.files[0];if(!f)return;d.textContent='⏳ Görüntü okunuyor (ilk seferde 10-20 sn sürebilir)...';"
+            "try{await yukle();const s=await Tesseract.recognize(f,'eng+tur');const metin=s.data.text;"
+            "const ad=bul(metin);const tek=metin.replace(/\\s+/g,' ');"
+            "const ram=sayi(tek,/(?:RAM|Bellek)[^0-9]{0,20}(\\d{1,2})\\s*GB/i)||sayi(tek,/(\\d{1,2})\\s*GB\\s*(?:RAM|Bellek)/i);"
+            "const depo=sayi(tek,/(?:Depolama|Storage|Dahili)[^0-9]{0,25}(\\d{2,4})\\s*GB/i)||sayi(tek,/(\\d{2,4})\\s*GB\\s*(?:Depolama|Storage|ROM)/i);"
+            "if(!ad){d.textContent='Telefon modelini bulamadım. Model adı görünen bir ekran görüntüsü dene ya da adı yazarak ara.';return;}"
+            "d.textContent='✅ Buldum: '+ad+(ram?' · '+ram+' GB RAM':'')+(depo?' · '+depo+' GB':'')+' — tahmin açılıyor...';"
+            "const u=new URL(window.location.href);u.search='';u.searchParams.set('tel',ad);"
+            "if(ram)u.searchParams.set('ram',ram);if(depo)u.searchParams.set('depo',depo);"
+            "setTimeout(()=>{window.location.href=u.toString();},900);"
+            "}catch(e){d.textContent='Görüntü okunamadı, internet bağlantını kontrol edip tekrar dene.';}};"
+            "})();</script>",
             unsafe_allow_javascript=True)
         # Hızlı deneme: tek tıkla modeli ve en ucuz varyantını seçip tahmini gösterir
         ornekler = [m for m in ["Apple iPhone 13", "Samsung Galaxy S23", "Xiaomi Redmi Note 12",
@@ -1693,7 +1732,61 @@ with sekme_onerici:
                            key="pdf_onerici", on_click="ignore")
 
 # ------------------------------------------------------------
-# 6) Proje hakkında
+# 6) Marka karşılaştırma
+# ------------------------------------------------------------
+@st.cache_data(show_spinner=False)
+def marka_ozeti():
+    # En az 10 telefonu olan markalar: fiyat, donanım puanı, segment dağılımı ve "marka primi"
+    tablo, _ = veri_yukle()
+    tahmini = np.exp(FIYAT_MODELI.predict(tablo[OZELLIKLER]))  # donanıma göre beklenen fiyat (₹)
+    dengeli = ONCELIKLER["⚖️ Dengeli"]
+    puan = sum(tablo[s].rank(pct=True) * w for s, w in dengeli.items()) * 100
+    t2 = tablo.assign(oran=tablo["price"] / tahmini, puan=puan)
+    sayilar = t2["marka"].value_counts()
+    t2 = t2[t2["marka"].isin(sayilar[sayilar >= 10].index)]
+    ozet = t2.groupby("marka").agg(adet=("price", "size"), ort_fiyat=("price", "mean"), ort_puan=("puan", "mean"),
+                                   prim=("oran", "median"), g5=("5G_or_not", "mean"))
+    dagilim = pd.crosstab(t2["marka"], t2["segment"], normalize="index").reindex(columns=range(4), fill_value=0)
+    return ozet.sort_values("prim"), dagilim
+
+
+with sekme_markalar:
+    st.markdown('<div class="baslik">Markalar</div>'
+                '<div class="alt">En az 10 telefonu olan markaları karşılaştırıyoruz. "Marka primi", telefonların gerçek '
+                'fiyatının donanımlarına göre beklenen fiyata (ZANEDUSCV regresyon) oranı: 1,00 üstü markaya fazladan '
+                'para ödendiğini, altı fiyatına göre güçlü donanım verildiğini gösteriyor.</div>', unsafe_allow_html=True)
+    ozet, dagilim = marka_ozeti()
+    en_iyi, en_pahali = ozet.index[0], ozet.index[-1]
+    m1, m2, m3 = st.columns(3)
+    for kol, ust, ana, alt in [
+            (m1, "Fiyatını en çok hak eden", en_iyi, f"marka primi {ozet.at[en_iyi, 'prim']:.2f}"),
+            (m2, "Marka için en çok fazladan ödenen", en_pahali, f"marka primi {ozet.at[en_pahali, 'prim']:.2f}"),
+            (m3, "En yüksek ortalama donanım puanı", ozet["ort_puan"].idxmax(),
+             f"{ozet['ort_puan'].max():.0f}/100 dengeli puan")]:
+        kol.markdown(f'<div class="sonuc" style="--renk:#a78bfa;padding:1rem 1.2rem"><div class="ust">{ust}</div>'
+                     f'<div class="ana" style="font-size:1.5rem">{ana}</div><div class="aralik">{alt}</div></div>',
+                     unsafe_allow_html=True)
+    satirlar = []
+    for sira, (marka, r) in enumerate(ozet.iterrows(), 1):
+        cubuk = "".join(f'<span style="flex:{dagilim.at[marka, s] * 100:.1f};background:{SEGMENTLER[s][2]}" '
+                        f'title="{SEGMENTLER[s][0]}: %{dagilim.at[marka, s] * 100:.0f}"></span>' for s in range(4))
+        renk = "#34d399" if r.prim < 0.95 else "#f472b6" if r.prim > 1.1 else "inherit"
+        satirlar.append(f"<tr><td>{sira}</td><td style='text-align:left'><b>{marka}</b></td><td>{r.adet:.0f}</td>"
+                        f"<td>{tl(r.ort_fiyat)}</td><td>{r.ort_puan:.0f}</td><td>%{r.g5 * 100:.0f}</td>"
+                        f"<td style='color:{renk};font-weight:800'>{r.prim:.2f}</td>"
+                        f"<td><div class='marka-serit' role='img' aria-label='Segment dağılımı'>{cubuk}</div></td></tr>")
+    st.markdown('<div class="bolum" style="margin-top:1rem">🏷️ Fiyatını hak etme sıralaması</div>'
+                '<table class="tablo marka-tablo"><tr><th>#</th><th style="text-align:left">Marka</th><th>Telefon</th>'
+                '<th>Ort. fiyat</th><th>Donanım puanı</th><th>5G</th><th>Marka primi</th><th>Segment dağılımı</th></tr>'
+                + "".join(satirlar) + '</table>', unsafe_allow_html=True)
+    lejant = " ".join(f'<span><i style="background:{SEGMENTLER[s][2]}"></i>{SEGMENTLER[s][0]}</span>' for s in range(4))
+    st.markdown(f'<div class="lejant" style="justify-content:flex-start;margin-top:.6rem">{lejant}</div>',
+                unsafe_allow_html=True)
+    st.caption("Sıralama marka primine göre (düşük olan önde). Donanım puanı, Bütçeme Göre sekmesindeki \"Dengeli\" "
+               "önceliğin 100 üzerinden puanı. Marka primi, markanın telefonlarındaki oranların ortancası (medyan).")
+
+# ------------------------------------------------------------
+# 7) Proje hakkında
 # ------------------------------------------------------------
 with sekme_hakkinda:
     st.markdown('<div class="baslik">Proje Hakkında</div>', unsafe_allow_html=True)
