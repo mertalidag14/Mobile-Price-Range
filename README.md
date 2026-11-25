@@ -549,6 +549,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **🛒 Telefon Kataloğu:** 970 gerçek telefon, gerçek fiyatları ve marka logolarıyla mağaza kartları hâlinde listeleniyor. Marka, segment, fiyat aralığı ve 5G filtreleri, sıralama, arama ve "modelin yanıldıkları" filtresi var. Kartlardaki "Karşılaştır" butonuyla iki telefonu seçip karşılaştırmaya geçebiliyorsunuz.
 - **⚖️ Karşılaştır:** İki gerçek telefonu yan yana koyuyor (gerçek segment ve modelin tahmini dahil) ve özelliklerini bir radar grafikte gösteriyor.
 - **💰 Bütçeme Göre:** Bütçeni ve önceliğini (dengeli, performans, kamera, batarya, depolama) seçince o fiyata kadar olan telefonları özelliklerine göre 100 üzerinden puanlayıp en iyi 6 tanesini gösteriyor.
+- **🧭 Telefon Önerici:** Bütçe, kullanım amacı (oyun, fotoğraf, günlük, iş), pil önemi, ekran büyüklüğü, 5G ve marka tercihi soruluyor. Cevaplara göre 970 telefon arasından en uygun 3 telefon, puanları, neden önerildikleri ve donanımlarına göre fiyatlarının uygun olup olmadığıyla birlikte gösteriliyor.
 - **📊 Proje Hakkında:** Yöntem, ekip, model sonuçları ve modelin grafikleri (özellik önemi, karışıklık matrisi).
 
 ### ✨ Sitenin öne çıkan özellikleri
@@ -575,6 +576,10 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Paylaşma linki:** Bir telefon modeli seçip tahmin aldıktan sonra "🔗 Paylaş" ile bir link çıkıyor. Bu linki açan kişi aynı telefonu, aynı RAM/depolamayı ve aynı modelin tahminini görüyor.
 - **Canlı model grafikleri:** Proje Hakkında sekmesindeki özellik önemi ve karışıklık matrisi, sitedeki modelden anlık olarak hesaplanıyor.
 - **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor. Telefonda kenar boşlukları azalıyor, büyük yazılar küçülüyor, hazır bütçe butonları tek satıra sığıyor.
+- **Açılış ekranı:** Render'ın ücretsiz planında site uyuduktan sonra ilk açılışta modeller yeniden eğitildiği için 1-2 dakika geçiyor. Bu sırada boş sayfa yerine animasyonlu bir "TeknoTahmin hazırlanıyor" ekranı çıkıyor.
+- **Aydınlık / karanlık tema:** Sağ üstteki ⚙️ Görünüm menüsünden aydınlık temaya geçilebiliyor.
+- **Erişilebilirlik:** Aynı menüde 🔍 Büyük yazı modu (bütün yazılar yaklaşık %20 büyüyor) ve 🌀 Animasyonları kapatma seçeneği var. Sayfanın dili ekran okuyucular için Türkçe olarak ayarlı, tahmin sonucu değişince ekran okuyucu yeni sonucu sesli okuyor.
+- **🎤 Sesli arama:** Fiyat Tahmini'nde "Sesli ara" butonuna basıp "Samsung A54 ne kadar?" gibi söyleyince telefon adı kendiliğinden yazılıyor ve tahmin çıkıyor. Tarayıcının konuşma tanıma özelliğini kullanıyor (Chrome ve Edge'de çalışıyor, mikrofon izni istiyor).
 - **TL fiyatlar:** Veri setindeki Hindistan Rupisi fiyatları TL'ye çevrilerek gösteriliyor.
 **Modeller:** Sitede 10 donanım özelliğiyle eğitilmiş dört model var. Varsayılan model Random Forest (test doğruluğu yaklaşık **%74**). Model seçiciden XGBoost (yaklaşık **%75**), KNN (k=5, yaklaşık **%69**) ya da Mert Ali Dağ'ın geliştirdiği ZANEDUSCV (yaklaşık **%74**) da seçilebiliyor.
 
@@ -603,6 +608,11 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 **📊 Proje Hakkında:** Yöntem, ekip ve modelin grafikleri (özellik önemi, karışıklık matrisi)
 
 ![TeknoTahmin – Proje Hakkında](ekran_goruntuleri/4_proje_hakkinda.jpg)
+
+
+**🧭 Telefon Önerici:** Birkaç soruya göre en uygun 3 telefon
+
+![TeknoTahmin – Telefon Önerici](ekran_goruntuleri/6_telefon_onerici.jpg)
 
 
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatları. Sitede bunları 1 ₹ ≈ 0,54 TL

@@ -69,7 +69,7 @@ def logo(marka, boyut=16):
 # ------------------------------------------------------------
 # Arka plan: markasız, çizilmiş telefonlar (logo kullanılmıyor)
 # ------------------------------------------------------------
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def arka_plan_svg():
     rnd = random.Random(7)
     renkler = [("#7c3aed", "#db2777"), ("#2563eb", "#06b6d4"), ("#db2777", "#f59e0b"),
@@ -107,7 +107,7 @@ def arka_plan_svg():
     return base64.b64encode(svg.encode()).decode()
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def ikon_katmani_svg():
     # Bulanık telefonların üstünde duran net, soluk küçük süsler: yıldız, kamera merceği, şimşek, sinyal, pil, çip
     rnd = random.Random(21)
@@ -292,6 +292,37 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 .stTabs [data-baseweb="tab-list"] {{ gap: .4rem; }}
 .stTabs [data-baseweb="tab"] {{ background: rgba(255,255,255,.06); border-radius: 12px; padding: .4rem 1rem; }}
 .stTabs [aria-selected="true"] {{ background: rgba(167,139,250,.25); }}
+.acilis {{ min-height: 78vh; display: flex; align-items: center; justify-content: center; border-radius: 22px;
+background: radial-gradient(ellipse at 50% 35%, rgba(167,139,250,.22), transparent 65%); }}
+.acilis-kutu {{ text-align: center; max-width: 520px; padding: 2rem; }}
+.acilis-telefon {{ width: 64px; height: 112px; margin: 0 auto 1.4rem; border: 4px solid #c4b5fd; border-radius: 16px;
+position: relative; overflow: hidden; animation: acilis-zipla 1.6s ease-in-out infinite; }}
+.acilis-telefon span {{ position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
+background: linear-gradient(180deg, #a78bfa, #f472b6); animation: acilis-dol 2.4s ease-in-out infinite; }}
+.acilis-baslik {{ font-size: 1.6rem; font-weight: 900; color: #fff; }}
+.acilis-alt {{ color: rgba(255,255,255,.72); margin-top: .4rem; }}
+.acilis-adimlar {{ display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: 1.2rem; }}
+.acilis-adimlar span {{ font-size: .8rem; color: #fff; padding: .25rem .7rem; border-radius: 99px; background: rgba(255,255,255,.08);
+border: 1px solid rgba(255,255,255,.14); animation: acilis-yan 2.4s ease-in-out infinite; }}
+.acilis-adimlar span:nth-child(2) {{ animation-delay: .6s; }} .acilis-adimlar span:nth-child(3) {{ animation-delay: 1.2s; }}
+.acilis-adimlar span:nth-child(4) {{ animation-delay: 1.8s; }}
+.acilis-cubuk {{ height: 6px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: 1.4rem; }}
+.acilis-cubuk i {{ display: block; height: 100%; width: 35%; border-radius: 99px; background: linear-gradient(90deg, #a78bfa, #f472b6);
+animation: acilis-kay 1.4s ease-in-out infinite; }}
+@keyframes acilis-zipla {{ 50% {{ transform: translateY(-10px) rotate(-4deg); }} }}
+@keyframes acilis-dol {{ 0% {{ height: 10%; }} 50% {{ height: 90%; }} 100% {{ height: 10%; }} }}
+@keyframes acilis-yan {{ 0%, 100% {{ opacity: .45; }} 30% {{ opacity: 1; border-color: #c4b5fd; }} }}
+@keyframes acilis-kay {{ 0% {{ transform: translateX(-110%); }} 100% {{ transform: translateX(320%); }} }}
+@media (prefers-reduced-motion: reduce) {{ .acilis * {{ animation: none !important; }} }}
+.sesli {{ display: flex; align-items: center; gap: .7rem; margin: -.4rem 0 .6rem; flex-wrap: wrap; }}
+.sesli button {{ font: inherit; font-size: .85rem; font-weight: 700; color: #fff; cursor: pointer; padding: .3rem .85rem;
+border-radius: 99px; border: 1px solid rgba(196,181,253,.6); background: linear-gradient(135deg, rgba(167,139,250,.28), rgba(244,114,182,.18)); }}
+.sesli button:disabled {{ opacity: .5; cursor: not-allowed; }}
+.sesli button.dinliyor {{ animation: sesli-nabiz 1s ease-in-out infinite; }}
+@keyframes sesli-nabiz {{ 50% {{ box-shadow: 0 0 0 8px rgba(244,114,182,.25); }} }}
+#sesli-durum {{ font-size: .8rem; color: rgba(255,255,255,.65); }}
+.st-key-ayarlar {{ position: absolute; top: .35rem; right: 1.6rem; width: auto !important; z-index: 5; }}
+.st-key-ayarlar button {{ min-height: 0; padding: .15rem .7rem; font-size: .8rem; }}
 @media (max-width: 640px) {{
 .block-container {{ margin: 1rem auto; padding: 1.4rem 1rem !important; border-radius: 20px; }}
 .baslik {{ font-size: 1.6rem; }}
@@ -322,7 +353,7 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 # ------------------------------------------------------------
 # Veri ve model
 # ------------------------------------------------------------
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def veri_yukle():
     df = pd.read_csv(TABAN / "gercek_telefonlar.csv")
     df["fast_charging"] = df["fast_charging"].fillna(0)
@@ -344,7 +375,7 @@ def veri_yukle():
     return df, list(sinirlar)
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def model_egit():
     df, _ = veri_yukle()
     X_tr, X_te, y_tr, y_te = train_test_split(df[OZELLIKLER], df["segment"], test_size=0.2,
@@ -357,7 +388,7 @@ def model_egit():
     return model, dogruluk, karisiklik
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def ek_modeller():
     # Sitedeki model seçici için KNN, XGBoost ve Mert Ali Dağ'ın algoritması ZANEDUSCV
     # (Random Forest ile aynı 10 özellik ve aynı eğitim/test bölmesi)
@@ -391,7 +422,7 @@ class OrtakKarar:
         return self.predict_proba(X).argmax(axis=1)
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def ortak_karar_modeli():
     # Testte doğruluğunu ölçmek için 4 modelin eğitim setiyle eğitilmiş hâllerini oylatıyoruz
     df, _ = veri_yukle()
@@ -409,7 +440,7 @@ def ortak_karar_modeli():
     return OrtakKarar(tum), dogruluk
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def fiyat_modeli():
     # Segment yerine fiyatın kendisini tahmin eden regresyon modeli (Mert Ali Dağ'ın ZANEDUSCV algoritması).
     # Fiyatlar çok geniş aralıkta olduğu için log(fiyat) üzerinde eğitiliyor.
@@ -421,12 +452,25 @@ def fiyat_modeli():
     return ZANEDUSCVRegressor(random_state=0).fit(X, y), ort_hata
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def katalog_tahminleri():
     # Katalogdaki her telefon için modelin tahmini (bir kez hesaplanıp saklanır)
     return model_egit()[0].predict(veri_yukle()[0][OZELLIKLER])
 
 
+# Açılış ekranı: sunucu ilk açıldığında modeller eğitilirken (1-2 dk) boş sayfa yerine animasyonlu bir ekran görünür
+_acilis = st.empty()
+if "_acilis_goruldu" not in st.session_state:
+    _acilis.markdown("""
+<div class="acilis" role="status" aria-live="polite">
+  <div class="acilis-kutu">
+    <div class="acilis-telefon"><span></span></div>
+    <div class="acilis-baslik">TeknoTahmin hazırlanıyor</div>
+    <div class="acilis-alt">Sunucu uyanıyor ve 970 gerçek telefonla modeller eğitiliyor. İlk açılış 1-2 dakika sürebilir.</div>
+    <div class="acilis-adimlar"><span>📊 Veri</span><span>🌲 Random Forest</span><span>⚡ XGBoost</span><span>🧠 ZANEDUSCV</span></div>
+    <div class="acilis-cubuk"><i></i></div>
+  </div>
+</div>""", unsafe_allow_html=True)
 df, SINIRLAR = veri_yukle()
 df = df.copy()  # önbellekteki tabloyu değiştirmemek için
 model, DOGRULUK, KARISIKLIK = model_egit()
@@ -434,6 +478,8 @@ df["tahmin"] = katalog_tahminleri()
 # Model seçici: ad -> (eğitilmiş model, test doğruluğu)
 MODELLER = {"Random Forest": (model, DOGRULUK)} | ek_modeller() | {"🤝 Ortak karar": ortak_karar_modeli()}
 FIYAT_MODELI, FIYAT_HATASI = fiyat_modeli()
+_acilis.empty()
+st.session_state["_acilis_goruldu"] = True
 
 
 def segment_araligi(s):
@@ -484,7 +530,7 @@ def gb_yaz(x):
     return f"{x / 1024:g} TB" if x >= 1024 else f"{x:g} GB"
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def benzerlik_modeli():
     # "Benzer telefonlar": modeldeki 10 özelliği ölçeklendirip en yakın komşuları buluyoruz (KNN'in mesafe mantığı)
     olcek = StandardScaler().fit(df[OZELLIKLER])
@@ -798,6 +844,58 @@ def sekmeye_gec(sira):
                 "else if(d++ < 40)setTimeout(f,100)};f();")
 
 
+AYDINLIK_TEMA_CSS = """
+.stApp { background: #eef0fb !important; color: #1d1b33; }
+.stApp::before { opacity: .35; } .stApp::after { opacity: .25; }
+.block-container { background: rgba(255,255,255,.86) !important; border-color: rgba(30,27,75,.12) !important;
+  box-shadow: 0 30px 80px rgba(60,50,140,.18) !important; }
+.stApp, .stApp p, .stApp li, .stApp label, .stApp h1, .stApp h2, .stApp h3, [data-testid="stMarkdownContainer"],
+[data-testid="stWidgetLabel"] p, [data-testid="stCaptionContainer"], .stTabs [data-baseweb="tab"] p { color: #1d1b33 !important; }
+.logo-alt, .alt, .sonuc .aralik, .sonuc .ust, .kart ul, .mini-bilgi, .neden li i, .neden-not, .not, .butce-neden,
+.etiket-marka, .markalar .etiket, .cetvel .sinirlar small, .onem .deger, .km th, .tablo th:first-child, .tablo td:first-child
+  { color: #4a4766 !important; }
+.baslik, .bolum, .sonuc .ana, .kart .isim, .kart .fiyat, .mini-isim, .mini-fiyat, .tablo, .neden-baslik, .neden li,
+.cubuk .ad, .cubuk .yuzde, .lejant, .onem, .km, .cetvel .isaret, .cip, .acilis-baslik { color: #1d1b33 !important; }
+.marka svg, .isim svg, .mini-isim svg { fill: #1d1b33 !important; }
+.kart, .mini-kart, .cip, .ozellik, .neden, .cubuk .iz, .onem .iz { background: rgba(30,27,75,.05) !important;
+  border-color: rgba(30,27,75,.12) !important; }
+.ozellik { color: #4a4766 !important; }
+.tablo th, .tablo td { border-bottom-color: rgba(30,27,75,.1) !important; }
+.nav { border-bottom-color: rgba(30,27,75,.12) !important; }
+.st-key-marka_seridi button, .stButton button, [data-testid="stPopover"] button, [data-testid="stDownloadButton"] button,
+[data-testid="stBaseButton-segmented_control"], [data-testid="stBaseButton-segmented_controlActive"],
+[data-testid="stBaseButton-pills"], [data-testid="stBaseButton-pillsActive"] {
+  background: #ffffff !important; color: #1d1b33 !important; border-color: rgba(30,27,75,.18) !important; }
+.st-key-marka_seridi button::before { background: #1d1b33 !important; }
+.st-key-marka_seridi button p, .stButton button p { color: #1d1b33 !important; }
+[data-baseweb="input"], [data-baseweb="input"] input, [data-baseweb="select"] > div, [data-baseweb="textarea"] textarea,
+[data-testid="stNumberInput"] input, [data-testid="stNumberInputContainer"] { background: #ffffff !important;
+  color: #1d1b33 !important; border-color: rgba(30,27,75,.18) !important; }
+[data-baseweb="tag"] { background: #ede9fe !important; color: #1d1b33 !important; }
+.stTabs [data-baseweb="tab"] { background: rgba(30,27,75,.05) !important; }
+.stTabs [aria-selected="true"] { background: rgba(124,58,237,.16) !important; }
+.radar text { fill: #1d1b33 !important; }
+.acilis { background: radial-gradient(ellipse at 50% 30%, #ede9fe, #eef0fb 70%) !important; }
+.acilis-alt { color: #4a4766 !important; }
+[data-testid="stTextInputRootElement"], [data-testid="stNumberInputContainer"], [data-testid="stNumberInput"] input,
+div:has(> input[role="combobox"]), [data-testid="stSelectbox"] div:has(> div > input[role="combobox"]),
+[data-testid="stMultiSelect"] div:has(> div > input[role="combobox"]) {
+  background: #ffffff !important; color: #1d1b33 !important; border-color: rgba(30,27,75,.2) !important; }
+.stApp input { color: #1d1b33 !important; -webkit-text-fill-color: #1d1b33 !important; }
+[data-testid="stButtonGroup"] button { background: #ffffff !important; color: #1d1b33 !important;
+  border-color: rgba(30,27,75,.18) !important; }
+[data-testid="stButtonGroup"] button p { color: #1d1b33 !important; }
+[data-testid="stButtonGroup"] button[aria-checked="true"], [data-testid="stButtonGroup"] button[aria-pressed="true"] {
+  background: #ede9fe !important; border-color: #7c3aed !important; }
+[data-testid="stButtonGroup"] button[aria-checked="true"] p { color: #5b21b6 !important; }
+[data-testid="stRadioOption"] > div:first-child { background-color: #ffffff !important; border: 1px solid rgba(30,27,75,.35); }
+[data-testid="stCheckbox"] label > div:first-child, [data-testid="stToggle"] label > div:first-child { border-color: rgba(30,27,75,.35) !important; }
+.sesli button { color: #1d1b33 !important; } #sesli-durum { color: #4a4766 !important; }
+.stApp::after { filter: invert(1); }
+.tablo td.kazanan, .firsat { color: #047857 !important; }
+.radar line, .radar polygon, .radar circle { stroke: rgba(30,27,75,.18); }
+"""
+
 # ------------------------------------------------------------
 # Üst menü ve marka şeridi
 # ------------------------------------------------------------
@@ -808,6 +906,26 @@ st.markdown(f"""
 <span class="cip">Random Forest</span><span class="cip">%{DOGRULUK * 100:.0f} test doğruluğu</span></div>
 </div>
 """, unsafe_allow_html=True)
+
+
+# Görünüm ayarları: aydınlık / karanlık tema, büyük yazı (erişilebilirlik)
+with st.container(key="ayarlar"):
+    with st.popover("⚙️ Görünüm", help="Tema ve yazı boyutu"):
+        st.toggle("☀️ Aydınlık tema", key="ayar_aydinlik")
+        st.toggle("🔍 Büyük yazı", key="ayar_buyuk", help="Bütün yazıları yaklaşık %20 büyütür")
+        st.toggle("🌀 Animasyonları kapat", key="ayar_hareketsiz", help="Hareket hassasiyeti olanlar için")
+        st.caption("Ekran okuyucular için sayfa dili Türkçe olarak ayarlı, tahmin sonucu değişince sesli okunur.")
+# Ekran okuyucular Türkçe okusun diye sayfanın dili
+js_calistir("document.documentElement.lang='tr';")
+_ayar_css = []
+if st.session_state.get("ayar_buyuk"):
+    _ayar_css.append("html { font-size: 19px !important; } .block-container { font-size: 1.12em; }")
+if st.session_state.get("ayar_hareketsiz"):
+    _ayar_css.append("*, *::before, *::after { animation: none !important; transition: none !important; }")
+if st.session_state.get("ayar_aydinlik"):
+    _ayar_css.append(AYDINLIK_TEMA_CSS)
+if _ayar_css:
+    st.html("<style>" + "".join(_ayar_css) + "</style>")
 
 
 def marka_tikla(marka):
@@ -855,8 +973,9 @@ with st.container(horizontal=True, key="marka_seridi", gap="small"):
         st.button(etiket, key=f"mb_{i}", on_click=marka_tikla, args=(m,), help=f"{m} telefonlarını göster")
 st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer kaplamaz
 
-sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_hakkinda = st.tabs(
-    ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "📊 Proje Hakkında"])
+sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_hakkinda = st.tabs(
+    ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "🧭 Telefon Önerici",
+     "📊 Proje Hakkında"])
 # Katalogda ikinci telefona "Karşılaştır" basılınca sekmeyi sunucuyu beklemeden tarayıcıda hemen aç
 js_calistir("if(window.__karsHizli)return;window.__karsHizli=1;document.addEventListener('click',e=>{"
             "const b=e.target.closest('button');if(!b||b.innerText.trim()!=='⚖️ Karşılaştır')return;"
@@ -889,6 +1008,26 @@ with sekme_tahmin:
         modeller = sorted(df["temel_model"].unique(), key=str.lower)
         isim_arama = st.text_input("📱 Telefon adı (biliyorsan yaz, bilmiyorsan boş bırak)",
                                    placeholder="ör. iPhone, Galaxy S23, Redmi Note", key="t_isim")
+        # Sesli arama: tarayıcının konuşma tanıma özelliğiyle ("Samsung A54 ne kadar?") telefon adını doldurur
+        st.html(
+            '<div class="sesli"><button id="sesli-ara" type="button" aria-label="Sesli arama: telefon adını söyle">'
+            '🎤 Sesli ara</button><span id="sesli-durum" role="status" aria-live="polite">'
+            'Bas ve söyle: "Samsung A54 ne kadar?"</span></div>'
+            "<script>(()=>{const b=document.getElementById('sesli-ara');const d=document.getElementById('sesli-durum');"
+            "if(!b||b.dataset.hazir)return;b.dataset.hazir=1;"
+            "const SR=window.SpeechRecognition||window.webkitSpeechRecognition;"
+            "if(!SR){b.disabled=true;d.textContent='Bu tarayıcı sesli aramayı desteklemiyor, Chrome ya da Edge dene.';return;}"
+            "b.onclick=()=>{const r=new SR();r.lang='tr-TR';r.interimResults=false;r.maxAlternatives=1;"
+            "b.classList.add('dinliyor');d.textContent='🎙️ Dinliyorum...';"
+            "r.onresult=e=>{const duyulan=e.results[0][0].transcript;d.textContent='Duyduğum: '+duyulan;"
+            "const m=duyulan.toLowerCase().replace(/ne kadar|kaç para|kaç lira|fiyatı ne|fiyatı|fiyat|ne eder|telefonu|[?.!,]/g,' ')"
+            ".replace(/ +/g,' ').trim();const i=document.querySelector('input[aria-label^=\"📱 Telefon adı\"]');if(!i)return;"
+            "const s=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;s.call(i,m);"
+            "i.dispatchEvent(new Event('input',{bubbles:true}));i.focus();"
+            "i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,which:13,bubbles:true}));i.blur();};"
+            "r.onerror=e=>{d.textContent=e.error==='not-allowed'?'Mikrofon izni verilmedi.':'Ses alınamadı, tekrar dene.';};"
+            "r.onend=()=>b.classList.remove('dinliyor');r.start();};})();</script>",
+            unsafe_allow_javascript=True)
         # Hızlı deneme: tek tıkla modeli ve en ucuz varyantını seçip tahmini gösterir
         ornekler = [m for m in ["Apple iPhone 13", "Samsung Galaxy S23", "Xiaomi Redmi Note 12",
                                 "Google Pixel 7 5G", "OnePlus 11 5G", "Samsung Galaxy A14 5G"] if m in set(modeller)]
@@ -1014,7 +1153,7 @@ with sekme_tahmin:
                 gercek = (f'<div class="aralik" style="margin-top:.5rem">🏷️ Seçtiğin varyantın gerçek fiyatı: '
                           f'<b>{tl(gercek_fiyat)}</b> (gerçek segmenti: {SEGMENTLER[gercek_seg][0]})</div>')
             st.markdown(
-                f'<div class="sonuc" id="tahmin-sonucu" style="--renk:{renk}">'
+                f'<div class="sonuc" id="tahmin-sonucu" role="status" aria-live="polite" style="--renk:{renk}">'
                 f'<div class="ust">Tahmin edilen segment</div>'
                 f'<div class="ana">{ikon} {ad}</div>'
                 f'<div class="guven">{algo} güveni: %{olas[sinif] * 100:.0f}</div>'
@@ -1357,7 +1496,7 @@ ONCELIKLER = {
 }
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def ozellik_yuzdelikleri():
     # Her özelliğin 970 telefon arasındaki yeri (0 = en düşük, 1 = en yüksek)
     tablo, _ = veri_yukle()
@@ -1437,7 +1576,93 @@ with sekme_butce:
                                key="pdf_butce", on_click="ignore")
 
 # ------------------------------------------------------------
-# 5) Proje hakkında
+# 5) Telefon önerici: birkaç soru, en uygun 3 telefon
+# ------------------------------------------------------------
+KULLANIM = {
+    "🎮 Oyun": {"processor_speed": .4, "ram_capacity": .25, "refresh_rate": .2, "battery_capacity": .15},
+    "📷 Fotoğraf / video": {"primary_camera_rear": .45, "primary_camera_front": .2, "internal_memory": .2,
+                           "processor_speed": .15},
+    "💬 Sosyal medya / günlük": {"processor_speed": .2, "ram_capacity": .2, "battery_capacity": .2,
+                                "primary_camera_rear": .2, "refresh_rate": .2},
+    "💼 İş / okul": {"battery_capacity": .3, "ram_capacity": .25, "internal_memory": .25, "processor_speed": .2},
+}
+PIL_ONEMI = {"Az önemli": 0, "Orta": .15, "Çok önemli": .35}
+
+
+@st.cache_data(show_spinner=False)
+def onerici_yuzdelikleri():
+    tablo, _ = veri_yukle()
+    sutunlar = ["processor_speed", "ram_capacity", "refresh_rate", "battery_capacity", "primary_camera_rear",
+                "primary_camera_front", "internal_memory", "fast_charging"]
+    return pd.DataFrame({s: tablo[s].rank(pct=True) for s in sutunlar})
+
+
+with sekme_onerici:
+    st.markdown('<div class="baslik">Telefon Önerici</div>'
+                '<div class="alt">Birkaç soruyu cevapla, 970 gerçek telefon arasından sana en uygun 3 tanesini '
+                'nedenleriyle önerelim.</div>', unsafe_allow_html=True)
+    q1, q2 = st.columns(2, gap="large")
+    with q1:
+        o_butce = st.select_slider("1️⃣ En fazla ne kadar harcamak istersin?",
+                                   options=[5000, 7500, 10000, 12500, 15000, 20000, 25000, 30000, 40000, 50000, 90000],
+                                   value=15000, format_func=lambda x: "Fark etmez" if x == 90000 else f"{x:,.0f} TL".replace(",", "."),
+                                   key="o_butce")
+        o_kullanim = st.radio("2️⃣ Telefonu en çok ne için kullanacaksın?", list(KULLANIM), key="o_kullanim",
+                              horizontal=True)
+        o_pil = st.radio("3️⃣ Pil ömrü ne kadar önemli?", list(PIL_ONEMI), index=1, key="o_pil", horizontal=True)
+    with q2:
+        o_ekran = st.radio("4️⃣ Ekran büyüklüğü", ["Küçük (6,3\" altı)", "Fark etmez", "Büyük (6,6\" üstü)"], index=1,
+                           key="o_ekran", horizontal=True)
+        o_5g = st.toggle("5️⃣ 5G olsun", key="o_5g")
+        o_marka = st.multiselect("6️⃣ Tercih ettiğin markalar (boş bırakabilirsin)",
+                                 df["marka"].value_counts().index.tolist(), placeholder="Hepsi olur", key="o_marka")
+
+    aday = df[df["price"] * KUR <= o_butce]
+    if o_5g:
+        aday = aday[aday["5G_or_not"] == 1]
+    if o_marka:
+        aday = aday[aday["marka"].isin(o_marka)]
+    if o_ekran.startswith("Küçük"):
+        aday = aday[aday["screen_size"] < 6.3]
+    elif o_ekran.startswith("Büyük"):
+        aday = aday[aday["screen_size"] > 6.6]
+    if aday.empty:
+        st.info("Bu cevaplara uyan telefon bulamadım. Bütçeyi artırmayı ya da bir filtreyi kaldırmayı dene.")
+    else:
+        agirlik = dict(KULLANIM[o_kullanim])
+        pil = PIL_ONEMI[o_pil]
+        if pil:  # pil önemliyse batarya ve hızlı şarjın payı artıyor, diğerleri orantılı küçülüyor
+            agirlik = {s: w * (1 - pil) for s, w in agirlik.items()}
+            agirlik["battery_capacity"] = agirlik.get("battery_capacity", 0) + pil * .7
+            agirlik["fast_charging"] = agirlik.get("fast_charging", 0) + pil * .3
+        yuzdelik = onerici_yuzdelikleri().loc[aday.index]
+        puan = sum(yuzdelik[s] * w for s, w in agirlik.items()) * 100
+        # Aynı modelin varyantları üst üste gelmesin: her modelden en yüksek puanlısı
+        aday = (aday.assign(puan=puan.round(0)).sort_values(["puan", "price"], ascending=[False, True])
+                .drop_duplicates("temel_model"))
+        st.markdown(f'<div class="alt" style="margin-top:.6rem">Cevaplarına uyan <b>{len(aday)}</b> model var. '
+                    'İşte sana en uygun 3 tanesi:</div>', unsafe_allow_html=True)
+        kartlar = []
+        for sira, r in enumerate(aday.head(3).itertuples(), 1):
+            guclu = sorted(agirlik, key=lambda s: -yuzdelik.loc[r.Index, s])[:3]
+            neden = " · ".join(f"{OZELLIK_ADI[s][0]} {OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}"
+                               for s in guclu)
+            tahmini = float(np.exp(FIYAT_MODELI.predict(df.loc[[r.Index], OZELLIKLER])[0]))
+            deger = ("💎 Fiyatına göre çok iyi" if r.price < tahmini * 0.85 else
+                     "👍 Fiyatı donanımına uygun" if r.price < tahmini * 1.15 else "🏷️ Marka etkisiyle biraz pahalı")
+            html = kart_html(r)
+            html = html[:-len("</div>")] + (f'<div class="butce-neden">Neden: {neden}</div>'
+                                            f'<div class="butce-neden">{deger} (donanımına göre ~{tl(tahmini)})</div></div>')
+            html = html.replace('style="--renk:', 'style="padding-top:2.2rem;--renk:', 1)
+            html = html.replace('<div class="ust">', f'<span class="butce-puan">{sira}. öneri · {r.puan:.0f}/100</span>'
+                                '<div class="ust">', 1)
+            kartlar.append(html)
+        st.markdown(f'<div class="izgara">{"".join(kartlar)}</div>', unsafe_allow_html=True)
+        st.caption("Puan, kullanım amacına göre ağırlıklandırılmış özelliklerin 970 telefon arasındaki yerinden "
+                   "hesaplanıyor. \"Donanımına göre\" fiyat, ZANEDUSCV regresyon modelinin tahmini.")
+
+# ------------------------------------------------------------
+# 6) Proje hakkında
 # ------------------------------------------------------------
 with sekme_hakkinda:
     st.markdown('<div class="baslik">Proje Hakkında</div>', unsafe_allow_html=True)
