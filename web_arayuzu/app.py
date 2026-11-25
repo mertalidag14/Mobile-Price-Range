@@ -404,8 +404,10 @@ def ek_modeller():
     sonuc = {}
     for ad, yeni in [(f"KNN (k={k})", lambda: knn), ("XGBoost", lambda: XGBClassifier(**xgb_ayar)),
                      ("ZANEDUSCV", lambda: ZANEDUSCVClassifier(random_state=0))]:
-        dogruluk = yeni().fit(X_tr, y_tr).score(X_te, y_te)
-        sonuc[ad] = (yeni().fit(X, y), dogruluk)  # sitede tüm veriyle eğitilmiş hâli kullanılıyor
+        # Sunucunun ilk açılışı hızlı olsun diye her model bir kez (eğitim setiyle) eğitiliyor;
+        # test doğruluğu da sitede kullanılan bu modelin doğruluğu
+        mdl = yeni().fit(X_tr, y_tr)
+        sonuc[ad] = (mdl, mdl.score(X_te, y_te))
     return sonuc
 
 
@@ -424,32 +426,27 @@ class OrtakKarar:
 
 @st.cache_resource(show_spinner=False)
 def ortak_karar_modeli():
-    # Testte doğruluğunu ölçmek için 4 modelin eğitim setiyle eğitilmiş hâllerini oylatıyoruz
+    # Dört modelin (eğitim setiyle eğitilmiş hâlleri) oylaması; yeniden eğitim yok, sadece Random Forest'ın
+    # eğitim setli hâli ekleniyor (bir saniyeden kısa sürüyor)
     df, _ = veri_yukle()
     X, y = df[OZELLIKLER], df["segment"]
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    k = int(next(ad for ad in ek_modeller() if ad.startswith("KNN")).split("=")[1].rstrip(")"))
-    test_modelleri = [RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42),
-                      Pipeline([("olcek", StandardScaler()), ("knn", KNeighborsClassifier(n_neighbors=k))]),
-                      XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.1, subsample=0.9,
-                                    colsample_bytree=0.9, random_state=42, n_jobs=1),
-                      ZANEDUSCVClassifier(random_state=0)]
-    dogruluk = (OrtakKarar([m.fit(X_tr, y_tr) for m in test_modelleri]).predict(X_te) == y_te.values).mean()
-    # Sitede tüm veriyle eğitilmiş 4 modelin oylaması kullanılıyor
-    tum = [model_egit()[0]] + [m for m, _ in ek_modeller().values()]
-    return OrtakKarar(tum), dogruluk
+    rf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(X_tr, y_tr)
+    oylama = OrtakKarar([rf] + [m for m, _ in ek_modeller().values()])
+    return oylama, float((oylama.predict(X_te) == y_te.values).mean())
 
 
 @st.cache_resource(show_spinner=False)
 def fiyat_modeli():
     # Segment yerine fiyatın kendisini tahmin eden regresyon modeli (Mert Ali Dağ'ın ZANEDUSCV algoritması).
-    # Fiyatlar çok geniş aralıkta olduğu için log(fiyat) üzerinde eğitiliyor.
+    # Fiyatlar çok geniş aralıkta olduğu için log(fiyat) üzerinde eğitiliyor; tek eğitim, hızlı açılış için.
     df, _ = veri_yukle()
     X, y = df[OZELLIKLER], np.log(df["price"])
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
-    tahmin = np.exp(ZANEDUSCVRegressor(random_state=0).fit(X_tr, y_tr).predict(X_te))
+    mdl = ZANEDUSCVRegressor(random_state=0).fit(X_tr, y_tr)
+    tahmin = np.exp(mdl.predict(X_te))
     ort_hata = float(np.mean(np.abs(tahmin - np.exp(y_te)) / np.exp(y_te)))  # ortalama yüzde hata
-    return ZANEDUSCVRegressor(random_state=0).fit(X, y), ort_hata
+    return mdl, ort_hata
 
 
 @st.cache_data(show_spinner=False)
