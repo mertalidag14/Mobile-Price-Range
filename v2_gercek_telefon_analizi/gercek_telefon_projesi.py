@@ -420,3 +420,75 @@ if "ZANEDUSCV" in ek_modeller:
         ax.set_xlabel("Tahmin Edilen")
         ax.set_ylabel("Gerçek")
     kaydet("zaneduscv_confusion_matrix.png")
+
+# ------------------------------------------------------------
+print("\n--- 25. Ensemble: Modellerin Oylaması (Soft Voting) ---")
+# Birden çok modelin olasılıklarının ortalamasını alıp karar veriyoruz. Farklı mantıkla çalışan modeller
+# (ağaç, boosting, komşuluk) farklı yerlerde yanıldığı için birleşince daha kararlı sonuç bekliyoruz.
+from sklearn.ensemble import VotingClassifier
+# Birkaç kombinasyon denedik; CV'de en iyisi Random Forest + SVM + ZANEDUSCV çıktı (ağaç, mesafe ve boosting bir arada)
+oylama = VotingClassifier([
+    ("rf", RandomForestClassifier(**grid.best_params_, random_state=42)),
+    ("svm", make_pipeline(StandardScaler(), SVC(C=svm_grid.best_params_["svc__C"],
+                                                gamma=svm_grid.best_params_["svc__gamma"],
+                                                probability=True, random_state=42))),
+    ("zane", ZANEDUSCVClassifier(random_state=0)),
+], voting="soft")
+oylama.fit(X_train, y_train)
+acc_oylama = accuracy_score(y_test, oylama.predict(X_test))
+cv_oylama = cross_val_score(oylama, X, y, cv=5, scoring="accuracy", n_jobs=-1)
+print(f"Ensemble (Random Forest + SVM + ZANEDUSCV) -> Test: %{acc_oylama * 100:.2f} | "
+      f"CV: %{cv_oylama.mean() * 100:.2f} (± {cv_oylama.std() * 100:.2f})")
+print(f"Karşılaştırma: en iyi tek model testte %{sonuc_df['Accuracy'].max() * 100:.2f}, "
+      f"CV'de %{max(v['CV Ortalama'] for v in cv_sonuc.values()) * 100:.2f}")
+
+# ------------------------------------------------------------
+print("\n--- 26. Fiyatı TL / ₹ Olarak Tahmin Etmek (Regresyon) ---")
+# Segment yerine fiyatın kendisini tahmin ediyoruz. Fiyatlar çok geniş aralıkta olduğu için (3.499 – 163.980 ₹)
+# modeli log(fiyat) üzerinde eğitip tahmini geri çeviriyoruz; böylece ucuz ve pahalı telefonlardaki hatalar dengeleniyor.
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score, mean_absolute_error
+from xgboost import XGBRegressor
+from zaneduscv import ZANEDUSCVRegressor
+log_tr, log_te = np.log(df.loc[X_train.index, "price"]), np.log(df.loc[X_test.index, "price"])
+gercek_fiyat = np.exp(log_te)
+reg_modelleri = {
+    "Random Forest": RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1),
+    "XGBoost": XGBRegressor(n_estimators=400, max_depth=4, learning_rate=0.05, subsample=0.9,
+                            colsample_bytree=0.9, random_state=42),
+    "ZANEDUSCV": ZANEDUSCVRegressor(random_state=0),
+}
+reg_sonuc, reg_tahmin = {}, {}
+for ad, m in reg_modelleri.items():
+    tah = np.exp(m.fit(X_train, log_tr).predict(X_test))
+    reg_tahmin[ad] = tah
+    reg_sonuc[ad] = {"R2 (log fiyat)": r2_score(log_te, np.log(tah)),
+                     "Ortalama hata (₹)": mean_absolute_error(gercek_fiyat, tah),
+                     "Ortalama hata (%)": np.mean(np.abs(tah - gercek_fiyat) / gercek_fiyat) * 100}
+reg_df = pd.DataFrame(reg_sonuc).T
+print(reg_df.round(3).to_string())
+reg_df.round(4).to_csv(TABAN / "regresyon_sonuclari_gercek.csv")
+en_iyi_reg = reg_df["Ortalama hata (%)"].idxmin()
+print(f"En iyi regresyon modeli: {en_iyi_reg} (ortalama %{reg_df.loc[en_iyi_reg, 'Ortalama hata (%)']:.1f} hata)")
+
+plt.figure(figsize=(6.5, 6))
+plt.scatter(gercek_fiyat, reg_tahmin[en_iyi_reg], alpha=0.6, color="#7c3aed", edgecolor="white", linewidth=0.5)
+sinir = [gercek_fiyat.min() * 0.9, gercek_fiyat.max() * 1.1]
+plt.plot(sinir, sinir, "--", color="#f472b6", label="Doğru tahmin çizgisi")
+plt.xscale("log")
+plt.yscale("log")
+plt.xlabel("Gerçek fiyat (₹, log ölçek)")
+plt.ylabel("Tahmin edilen fiyat (₹, log ölçek)")
+plt.title(f"{en_iyi_reg}: Gerçek ve Tahmin Edilen Fiyat (test seti)")
+plt.legend()
+plt.grid(alpha=0.3)
+kaydet("fiyat_regresyon.png")
+
+# Model donanımına göre "ucuz kalmış" ve "pahalı" telefonlar
+fark = pd.DataFrame({"model": df.loc[X_test.index, "model"], "gerçek ₹": gercek_fiyat.round(),
+                     "tahmin ₹": reg_tahmin[en_iyi_reg].round()})
+fark["fark %"] = ((fark["gerçek ₹"] - fark["tahmin ₹"]) / fark["tahmin ₹"] * 100).round(1)
+print("\nDonanımına göre en pahalı satılan 5 telefon (marka etkisi):")
+print(fark.sort_values("fark %", ascending=False).head(5).to_string(index=False))
+print("\nDonanımına göre en ucuz kalan 5 telefon (fırsat):")
+print(fark.sort_values("fark %").head(5).to_string(index=False))

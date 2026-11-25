@@ -266,7 +266,7 @@ Mobile-Price-Range/
 | Dosya | Açıklama |
 | :--- | :--- |
 | `gercek_telefonlar.csv` | 980 gerçek telefon ve gerçek fiyatları (Smartprix, Hindistan ₹), kaynak: [Kaggle – Real World Smartphone's Dataset](https://www.kaggle.com/datasets/abhijitdahatonde/real-world-smartphones-dataset) |
-| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (24 bölüm: ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
+| `PROJE_gercek.ipynb` | Analiz adımlarının gerçek veriyle yapılmış hâli (26 bölüm: ZANEDUSCV, ensemble, fiyat regresyonu, SVM, CatBoost, hiperparametre grafiği, marka denemesi ve SHAP dahil) |
 | `gercek_telefon_projesi.py` | Aynı kodun tek dosyalık Python hâli |
 | `zaneduscv/` | Mert Ali Dağ'ın geliştirdiği ZANEDUSCV algoritmasının dosyaları ([ZANEDUSCV deposundan](https://github.com/mertalidag14/ZANEDUSCV) kopyalandı) |
 | `veri_inceleme_eda_gercek.ipynb` | Gerçek veri için keşifçi veri analizi (EDA): dağılımlar, segmentler, özelliklerin fiyata etkisi ve korelasyonlar (Gürkan Tural) |
@@ -435,6 +435,34 @@ ZANEDUSCV'nin en önemli bulduğu özellikler işlemci hızı, RAM, hafıza kart
 
 ![Random Forest ve ZANEDUSCV confusion matrix](v2_gercek_telefon_analizi/grafikler_gercek/zaneduscv_confusion_matrix.png)
 
+### 🤝 Ensemble: modelleri oylatmak
+
+Tek bir modele güvenmek yerine birkaç modelin olasılıklarının ortalamasını alıp karar veriyoruz (soft voting). Birkaç kombinasyon deniyoruz, en iyisi **Random Forest + SVM + ZANEDUSCV** çıkıyor. Ağaç tabanlı, mesafe tabanlı ve boosting tabanlı üç farklı model farklı yerlerde yanıldığı için birbirlerinin hatalarını kapatıyor.
+
+| Model | Test doğruluğu | 5-Fold CV |
+| :--- | :---: | :---: |
+| En iyi tek model (test) – XGBoost | **%76,29** | %67,84 |
+| En iyi tek model (CV) – SVM | %71,13 | %71,75 |
+| **Ensemble (RF + SVM + ZANEDUSCV)** | %73,20 | **%71,96** |
+
+Ensemble, CV'de bütün tek modelleri geçen tek model. Yani tek bir test bölmesinde en iyi değil ama farklı bölmelerde en kararlı sonucu veriyor. Sitedeki **🤝 Ortak karar** seçeneği de aynı mantıkla sitedeki dört modeli oylatıyor.
+
+### 💵 Fiyatı TL olarak tahmin etmek (regresyon)
+
+Segmentin yanında fiyatın kendisini de tahmin ediyoruz. Fiyatlar 3.499 ₹ ile 163.980 ₹ arasında çok geniş bir aralıkta olduğu için modelleri log(fiyat) üzerinde eğitip tahmini geri çeviriyoruz. Böylece ucuz ve pahalı telefonlardaki hatalar dengeleniyor.
+
+| Model | R² (log fiyat) | Ortalama hata (₹) | Ortalama hata (%) |
+| :--- | :---: | :---: | :---: |
+| Random Forest | 0,905 | 5.684 | %18,1 |
+| XGBoost | 0,908 | 5.232 | %17,0 |
+| **ZANEDUSCV** | **0,909** | **5.111** | **%16,9** |
+
+Fiyat tahmininde en iyi sonucu Mert Ali Dağ'ın geliştirdiği ZANEDUSCV veriyor. Modelin donanıma göre tahmin ettiği fiyatla gerçek fiyatı karşılaştırınca ilginç sonuçlar çıkıyor:
+- **Donanımına göre pahalı satılanlar:** iPhone 11 Pro Max gerçek fiyatı tahminin yaklaşık 2 katı. Burada marka değerinin etkisi açıkça görülüyor.
+- **Donanımına göre ucuz kalanlar (fırsat):** Poco F1, Google Pixel 4 ve ZTE Axon 30S donanımlarının hak ettiği fiyatın yarısına satılıyor.
+
+![Gerçek ve tahmin edilen fiyat](v2_gercek_telefon_analizi/grafikler_gercek/fiyat_regresyon.png)
+
 ### 🌲 Hiperparametrelerin etkisi (Random Forest)
 
 GridSearchCV'nin denediği her kombinasyonun CV skorunu grafiğe döküyoruz. Ağaç sayısı 100'den 200'e çıkınca skor biraz artıyor, 300'de ise artış duruyor. Derinliği sınırsız bırakmak ya da 20 yapmak, 10 yapmaktan biraz daha iyi sonuç veriyor. Farklar küçük (0,760 – 0,769 arası), yani model hiperparametrelere çok hassas değil.
@@ -501,7 +529,7 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 - En iyi modelin `.pkl` olarak kaydedilmesi
 - Aynı analizin 980 gerçek telefonla tekrarlanması (v2)
 - Gerçek veride ters girilmiş 39 ekran çözünürlüğünün düzeltilmesi ve modellerin yeniden eğitilmesi
-- v2'ye Mert Ali Dağ'ın algoritması ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
+- v2'ye ensemble (oylama), TL fiyat tahmini (regresyon), Mert Ali Dağ'ın algoritması ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
 - **TeknoTahmin** web sitesi (Streamlit + Docker, Render'da yayında)
 - Sitenin hızlandırılması ve UptimeRobot ile sürekli açık tutulması
 
@@ -542,6 +570,8 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Bütçe listesi PDF'i:** Bütçeme Göre sekmesinde bütçene ve önceliğine uyan en iyi 10 telefonu puanları, özellikleri ve en güçlü yanlarıyla birlikte PDF olarak indirebiliyorsun. Mağazaya giderken ya da arkadaşına atarken işe yarıyor.
 - **Benzer telefonlar:** Fiyat Tahmini'nde bir model seçince ve Karşılaştır sekmesinde, donanımı en yakın 4 başka telefon gösteriliyor. KNN'deki mantıkla özellikleri ölçeklendirip telefonlar arasındaki mesafeye bakıyoruz.
 - **Anında karşılaştırma:** Katalogda ikinci telefona "⚖️ Karşılaştır" deyince sekme sunucuyu beklemeden tarayıcıda hemen (yaklaşık 0,15 saniyede) açılıyor, tablo arkadan doluyor.
+- **Ortak karar (ensemble):** Model seçicideki 🤝 Ortak karar seçeneği, dört modelin olasılıklarının ortalamasını alıp karar veriyor.
+- **TL fiyat tahmini:** Tahmin kartında segmentin yanında "Donanımına göre tahmini fiyat" da çıkıyor (ZANEDUSCV regresyon modeli, ortalama ±%18 hata). Telefonun gerçek fiyatı biliniyorsa, donanımına göre pahalı mı, makul mü, ucuz mu olduğu da yazıyor.
 - **Paylaşma linki:** Bir telefon modeli seçip tahmin aldıktan sonra "🔗 Paylaş" ile bir link çıkıyor. Bu linki açan kişi aynı telefonu, aynı RAM/depolamayı ve aynı modelin tahminini görüyor.
 - **Canlı model grafikleri:** Proje Hakkında sekmesindeki özellik önemi ve karışıklık matrisi, sitedeki modelden anlık olarak hesaplanıyor.
 - **Telefona uyumlu tasarım:** Sayfa telefonda da düzgün görünüyor, tahmin çıkınca sayfa kendiliğinden sonuç kartına kayıyor. Telefonda kenar boşlukları azalıyor, büyük yazılar küçülüyor, hazır bütçe butonları tek satıra sığıyor.
@@ -550,29 +580,29 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 
 ### 📸 Ekran Görüntüleri
 
-**🔮 Fiyat Tahmini:** Hızlı dene butonları, model seçici (Random Forest / KNN / XGBoost / ZANEDUSCV), tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
+**🔮 Fiyat Tahmini:** Hızlı dene butonları, model seçici (Random Forest / KNN / XGBoost / ZANEDUSCV / Ortak karar), donanıma göre TL fiyat tahmini, tahmin edilen segment, fiyat cetveli ve "Neden bu segment?" açıklaması
 
-![TeknoTahmin – Fiyat Tahmini](https://drive.google.com/thumbnail?id=1jVVLqR3hSUd6k7DqG7uvSrHbXL4wDXqd&sz=w1600)
+![TeknoTahmin – Fiyat Tahmini](ekran_goruntuleri/1_fiyat_tahmini.jpg)
 
 
 **🛒 Telefon Kataloğu:** 970 gerçek telefon, TL fiyatlar, marka logoları ve filtreler
 
-![TeknoTahmin – Telefon Kataloğu](https://drive.google.com/thumbnail?id=1H00gzaTHNpeT5uFYHsX7p5rbm8FpNWHf&sz=w1600)
+![TeknoTahmin – Telefon Kataloğu](ekran_goruntuleri/2_telefon_katalogu.jpg)
 
 
 **⚖️ Karşılaştır:** İki telefonun yan yana karşılaştırması ve özellik haritası (radar grafik)
 
-![TeknoTahmin – Karşılaştır](https://drive.google.com/thumbnail?id=1JCYjiNZqY0HPMuGOkD4iVuRtXl5neb3V&sz=w1600)
+![TeknoTahmin – Karşılaştır](ekran_goruntuleri/3_karsilastir.jpg)
 
 
 **💰 Bütçeme Göre:** Bütçe ve önceliğe göre en iyi telefonlar, 100 üzerinden puanlarıyla
 
-![TeknoTahmin – Bütçeme Göre](https://drive.google.com/thumbnail?id=18QYPl3v3ynZTKn_XF7U4NVlK53Y_EZqy&sz=w1600)
+![TeknoTahmin – Bütçeme Göre](ekran_goruntuleri/5_butceme_gore.jpg)
 
 
 **📊 Proje Hakkında:** Yöntem, ekip ve modelin grafikleri (özellik önemi, karışıklık matrisi)
 
-![TeknoTahmin – Proje Hakkında](https://drive.google.com/thumbnail?id=129iSuU-p2AsIGvmo2wR4eBQivA3mjSKx&sz=w1600)
+![TeknoTahmin – Proje Hakkında](ekran_goruntuleri/4_proje_hakkinda.jpg)
 
 
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatları. Sitede bunları 1 ₹ ≈ 0,54 TL

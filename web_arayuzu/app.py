@@ -9,6 +9,7 @@ import random
 from pathlib import Path
 from urllib.parse import quote
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 from sklearn.ensemble import RandomForestClassifier
@@ -18,7 +19,7 @@ from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-from zaneduscv import ZANEDUSCVClassifier  # Mert Ali Dağ'ın algoritması: github.com/mertalidag14/ZANEDUSCV
+from zaneduscv import ZANEDUSCVClassifier, ZANEDUSCVRegressor  # Mert Ali Dağ'ın algoritması: github.com/mertalidag14/ZANEDUSCV
 
 from logolar import LOGOLAR
 
@@ -377,6 +378,49 @@ def ek_modeller():
     return sonuc
 
 
+class OrtakKarar:
+    """Birden çok modelin olasılıklarının ortalamasını alan basit oylama (soft voting) modeli."""
+
+    def __init__(self, modeller):
+        self.modeller = modeller
+
+    def predict_proba(self, X):
+        return np.mean([m.predict_proba(X) for m in self.modeller], axis=0)
+
+    def predict(self, X):
+        return self.predict_proba(X).argmax(axis=1)
+
+
+@st.cache_resource
+def ortak_karar_modeli():
+    # Testte doğruluğunu ölçmek için 4 modelin eğitim setiyle eğitilmiş hâllerini oylatıyoruz
+    df, _ = veri_yukle()
+    X, y = df[OZELLIKLER], df["segment"]
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    k = int(next(ad for ad in ek_modeller() if ad.startswith("KNN")).split("=")[1].rstrip(")"))
+    test_modelleri = [RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42),
+                      Pipeline([("olcek", StandardScaler()), ("knn", KNeighborsClassifier(n_neighbors=k))]),
+                      XGBClassifier(n_estimators=300, max_depth=4, learning_rate=0.1, subsample=0.9,
+                                    colsample_bytree=0.9, random_state=42, n_jobs=1),
+                      ZANEDUSCVClassifier(random_state=0)]
+    dogruluk = (OrtakKarar([m.fit(X_tr, y_tr) for m in test_modelleri]).predict(X_te) == y_te.values).mean()
+    # Sitede tüm veriyle eğitilmiş 4 modelin oylaması kullanılıyor
+    tum = [model_egit()[0]] + [m for m, _ in ek_modeller().values()]
+    return OrtakKarar(tum), dogruluk
+
+
+@st.cache_resource
+def fiyat_modeli():
+    # Segment yerine fiyatın kendisini tahmin eden regresyon modeli (Mert Ali Dağ'ın ZANEDUSCV algoritması).
+    # Fiyatlar çok geniş aralıkta olduğu için log(fiyat) üzerinde eğitiliyor.
+    df, _ = veri_yukle()
+    X, y = df[OZELLIKLER], np.log(df["price"])
+    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42)
+    tahmin = np.exp(ZANEDUSCVRegressor(random_state=0).fit(X_tr, y_tr).predict(X_te))
+    ort_hata = float(np.mean(np.abs(tahmin - np.exp(y_te)) / np.exp(y_te)))  # ortalama yüzde hata
+    return ZANEDUSCVRegressor(random_state=0).fit(X, y), ort_hata
+
+
 @st.cache_data
 def katalog_tahminleri():
     # Katalogdaki her telefon için modelin tahmini (bir kez hesaplanıp saklanır)
@@ -388,7 +432,8 @@ df = df.copy()  # önbellekteki tabloyu değiştirmemek için
 model, DOGRULUK, KARISIKLIK = model_egit()
 df["tahmin"] = katalog_tahminleri()
 # Model seçici: ad -> (eğitilmiş model, test doğruluğu)
-MODELLER = {"Random Forest": (model, DOGRULUK)} | ek_modeller()
+MODELLER = {"Random Forest": (model, DOGRULUK)} | ek_modeller() | {"🤝 Ortak karar": ortak_karar_modeli()}
+FIYAT_MODELI, FIYAT_HATASI = fiyat_modeli()
 
 
 def segment_araligi(s):
@@ -940,7 +985,8 @@ with sekme_tahmin:
                 st.session_state["t_algo"] = "Random Forest"
             algo = st.segmented_control("🤖 Tahmini yapan model", list(MODELLER), key="t_algo",
                                         help="Analizde karşılaştırdığımız modellerden birini seç. Hepsi aynı 10 özellikle "
-                                             "ve aynı veriyle eğitildi.") or "Random Forest"
+                                             "ve aynı veriyle eğitildi. \"Ortak karar\", dört modelin "
+                                             "olasılıklarının ortalamasını alıyor (ensemble).") or "Random Forest"
             secili_model, secili_dogruluk = MODELLER[algo]
             olas = secili_model.predict_proba(girdi)[0]
             sinif = int(olas.argmax())
@@ -951,6 +997,18 @@ with sekme_tahmin:
                 f'<span class="yuzde">%{p * 100:.0f}</span></div>'
                 for i, p in enumerate(olas))
             gercek = ""
+            # Donanıma göre tahmini fiyat (regresyon)
+            tahmini_fiyat = float(np.exp(FIYAT_MODELI.predict(girdi)[0]))
+            fiyat_satiri = (f'<div class="aralik" style="margin-top:.6rem">💵 Donanımına göre tahmini fiyat: '
+                            f'<b>{tl(tahmini_fiyat)}</b> <span style="opacity:.7">(ortalama ±%{FIYAT_HATASI * 100:.0f} hata, '
+                            f'ZANEDUSCV regresyon)</span></div>')
+            if gercek_fiyat is not None:
+                fark = (gercek_fiyat - tahmini_fiyat) / tahmini_fiyat * 100
+                yorum = ("donanımına göre <b>pahalı</b> (marka etkisi olabilir)" if fark > 15 else
+                         "donanımına göre <b>ucuz</b>, fiyat/performansı iyi" if fark < -15 else
+                         "donanımına göre <b>makul</b> fiyatlı")
+                fiyat_satiri += (f'<div class="aralik">Gerçek fiyatı tahminden %{abs(fark):.0f} '
+                                 f'{"fazla" if fark >= 0 else "az"}: {yorum}.</div>')
             if gercek_fiyat is not None:
                 gercek_seg = int(pd.cut([gercek_fiyat], SINIRLAR, labels=False, include_lowest=True)[0])
                 gercek = (f'<div class="aralik" style="margin-top:.5rem">🏷️ Seçtiğin varyantın gerçek fiyatı: '
@@ -961,7 +1019,7 @@ with sekme_tahmin:
                 f'<div class="ana">{ikon} {ad}</div>'
                 f'<div class="guven">{algo} güveni: %{olas[sinif] * 100:.0f}</div>'
                 f'<div class="fiyat">{segment_araligi(sinif)}</div>'
-                f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>{gercek}'
+                f'<div class="aralik">Bu segmentteki telefonların gerçek fiyat aralığı</div>{gercek}{fiyat_satiri}'
                 f'{fiyat_cetveli(olas, gercek_fiyat)}'
                 f'<div style="margin-top:.6rem">{cubuklar}</div>'
                 f'{neden_bu_segment(girdi, sinif, secili_model)}</div>', unsafe_allow_html=True)
@@ -1429,6 +1487,10 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 - **ZANEDUSCV:** Mert Ali Dağ'ın sıfırdan yazdığı, sadece NumPy kullanan bir gradient boosting algoritması. Ağaçları eğik bölmelerle
   kuruyor, yapraklarda sabit sayı yerine küçük bir doğrusal model kullanıyor. Kodu:
   [github.com/mertalidag14/ZANEDUSCV](https://github.com/mertalidag14/ZANEDUSCV). Sitedeki model seçiciden de deneyebilirsin.
+- **Ensemble (oylama):** Random Forest + SVM + ZANEDUSCV'nin olasılıklarının ortalaması 5-fold CV'de **%72.0** ile
+  bütün tek modelleri geçiyor. Sitedeki **🤝 Ortak karar** seçeneği de sitedeki dört modeli aynı şekilde oylatıyor.
+- **Fiyat tahmini (regresyon):** Segmentin yanında fiyatın kendisi de tahmin ediliyor. En iyi sonucu ZANEDUSCV veriyor
+  (ortalama yaklaşık **%17** hata). Tahmin kartındaki "Donanımına göre tahmini fiyat" buradan geliyor.
 
 - **Bu sitedeki model:** 10 donanım özelliğiyle eğitilmiş Random Forest, test doğruluğu
   **%{DOGRULUK * 100:.1f}**. Cross-validation'da en kararlı model olduğu için seçildi.

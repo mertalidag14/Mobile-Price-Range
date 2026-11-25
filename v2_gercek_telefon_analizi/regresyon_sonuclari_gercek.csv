@@ -1,0 +1,4 @@
+,R2 (log fiyat),Ortalama hata (₹),Ortalama hata (%)
+Random Forest,0.9047,5683.6172,18.113
+XGBoost,0.9081,5231.7245,17.0148
+ZANEDUSCV,0.9089,5111.2543,16.9267
