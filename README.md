@@ -549,7 +549,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **🛒 Telefon Kataloğu:** 970 gerçek telefon, gerçek fiyatları ve marka logolarıyla mağaza kartları hâlinde listeleniyor. Marka, segment, fiyat aralığı ve 5G filtreleri, sıralama, arama ve "modelin yanıldıkları" filtresi var. Kartlardaki "Karşılaştır" butonuyla iki telefonu seçip karşılaştırmaya geçebiliyorsunuz.
 - **⚖️ Karşılaştır:** İki gerçek telefonu yan yana koyuyor (gerçek segment ve modelin tahmini dahil) ve özelliklerini bir radar grafikte gösteriyor.
 - **💰 Bütçeme Göre:** Bütçeni ve önceliğini (dengeli, performans, kamera, batarya, depolama) seçince o fiyata kadar olan telefonları özelliklerine göre 100 üzerinden puanlayıp en iyi 6 tanesini gösteriyor.
-- **🧭 Telefon Önerici:** Bütçe, kullanım amacı (oyun, fotoğraf, günlük, iş), pil önemi, ekran büyüklüğü, 5G ve marka tercihi soruluyor. Cevaplara göre 970 telefon arasından en uygun 3 telefon, puanları, neden önerildikleri ve donanımlarına göre fiyatlarının uygun olup olmadığıyla birlikte gösteriliyor.
+- **🧭 Telefon Önerici:** Bütçe, kullanım amacı (oyun, fotoğraf, günlük, iş), pil önemi, ekran büyüklüğü, 5G ve marka tercihi soruluyor. Cevaplara göre 970 telefon arasından en uygun 3 telefon, puanları, neden önerildikleri ve donanımlarına göre fiyatlarının uygun olup olmadığıyla birlikte gösteriliyor. Öneriler, verilen cevaplarla birlikte PDF olarak da indirilebiliyor.
 - **📊 Proje Hakkında:** Yöntem, ekip, model sonuçları ve modelin grafikleri (özellik önemi, karışıklık matrisi).
 
 ### ✨ Sitenin öne çıkan özellikleri

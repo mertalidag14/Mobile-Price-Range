@@ -725,6 +725,30 @@ def butce_pdf(butce, oncelik, toplam, telefonlar):
     return pdf_bitir(pdf, yazi)
 
 
+def onerici_pdf(cevaplar, toplam, telefonlar):
+    # Telefon önerici raporu: cevaplar = [(soru, cevap)], telefonlar = [(satır, puan, neden yazısı, değer yorumu)]
+    pdf, yazi = pdf_baslat("Telefon önerici sonucu")
+    yazi("Verdiğin cevaplar", 12, True, PDF_MOR, 7)
+    for soru, cevap in cevaplar:
+        yazi(f"{soru}: {cevap}", 10, bosluk=5)
+    pdf.ln(2)
+    yazi(f"Cevaplarına uyan {toplam} model var. Sana en uygun {len(telefonlar)} tanesi:", 11, True, bosluk=6)
+    pdf.ln(1)
+    for sira, (r, puan, neden, deger) in enumerate(telefonlar, 1):
+        yazi(f"{sira}. öneri: {r.isim}  —  {puan:.0f}/100 puan", 12, True, PDF_MOR, 7)
+        yazi(f"Fiyat: {tl(r.price)} ({rupi(r.price)})  ·  Segment: {SEGMENTLER[r.segment][0]}", 10)
+        yazi(f"{r.ram_capacity:g} GB RAM · {gb_yaz(r.internal_memory)} · {r.battery_capacity:.0f} mAh · "
+             f"{sarj_yazisi(r.fast_charging)} · {r.screen_size:g}\" {r.refresh_rate} Hz · "
+             f"{r.primary_camera_rear:g} MP kamera · {r.processor_speed:g} GHz işlemci"
+             + (" · 5G" if r.g5 else ""), 9, renk=PDF_GRI, bosluk=5)
+        yazi(f"Neden önerildi: {neden}", 9, bosluk=5)
+        yazi(deger, 9, renk=(5, 150, 105), bosluk=5)
+        pdf.ln(2)
+    yazi("Puan, kullanım amacına göre ağırlıklandırılmış özelliklerin 970 telefon arasındaki yerinden hesaplanıyor. "
+         "\"Donanımına göre\" fiyat, ZANEDUSCV regresyon modelinin tahmini.", 8, renk=PDF_GRI, bosluk=5)
+    return pdf_bitir(pdf, yazi)
+
+
 def tahmin_pdf(baslik, ozellik_listesi, model_adi, model_dogrulugu, olas, sinif, gercek_fiyat, nedenler):
     # Tahmin sonucunu tek sayfalık bir PDF rapora çevirir
     pdf, yazi = pdf_baslat("Telefon fiyat segmenti tahmin raporu")
@@ -1184,7 +1208,7 @@ with sekme_tahmin:
             p1, p2 = st.columns(2)
             p1.download_button("📄 PDF olarak indir",
                                # PDF sadece butona basınca hazırlanıyor (her yenilemede değil, site hızlı kalsın)
-                               data=lambda a=(baslik, ozellik_listesi, algo, secili_dogruluk, olas, sinif, gercek_fiyat,
+                               data=lambda a=(baslik, ozellik_listesi, algo.replace("🤝 ", ""), secili_dogruluk, olas, sinif, gercek_fiyat,
                                               girdi, secili_model): tahmin_pdf(*a[:7], neden_verisi(a[7], a[5], a[8])),
                                file_name=f"TeknoTahmin_{(secili or 'tahmin').replace(' ', '_')}.pdf",
                                mime="application/pdf", on_click="ignore", use_container_width=True)
@@ -1539,14 +1563,14 @@ with sekme_butce:
             st.info("Bu bütçede uyan telefon yok. Bütçeyi biraz artırmayı ya da filtreleri kaldırmayı dene.")
         else:
             agirlik = ONCELIKLER[oncelik]
-            yuzdelik = ozellik_yuzdelikleri().loc[aday.index]
-            puan = sum(yuzdelik[s] * w for s, w in agirlik.items()) * 100
+            yuzdelik_tablo = ozellik_yuzdelikleri().loc[aday.index]
+            puan = sum(yuzdelik_tablo[s] * w for s, w in agirlik.items()) * 100
             aday = aday.assign(puan=puan.round(0)).sort_values(["puan", "price"], ascending=[False, True])
             st.markdown(f'<div class="alt" style="margin-top:.8rem"><b>{len(aday)}</b> telefon bu bütçeye uyuyor. '
                         f'{oncelik.split(" ", 1)[1]} önceliğine göre en iyi 6 tanesi:</div>', unsafe_allow_html=True)
             kartlar = []
             for r in aday.head(6).itertuples():
-                guclu = sorted(agirlik, key=lambda s: -yuzdelik.loc[r.Index, s])[:2]
+                guclu = sorted(agirlik, key=lambda s: -yuzdelik_tablo.loc[r.Index, s])[:2]
                 neden = " · ".join(f"{OZELLIK_ADI[s][0]} {OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}"
                                    for s in guclu)
                 firsat = ('<span class="firsat">🔥 Fiyatına göre güçlü: model daha üst segment diyor</span>'
@@ -1564,7 +1588,7 @@ with sekme_butce:
             # Bütçe raporu (PDF): en iyi 10 telefon
             pdf_telefonlar = []
             for r in aday.head(10).itertuples():
-                guclu = sorted(agirlik, key=lambda s: -yuzdelik.loc[r.Index, s])[:2]
+                guclu = sorted(agirlik, key=lambda s: -yuzdelik_tablo.loc[r.Index, s])[:2]
                 guclu_yazi = ", ".join(f"{OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}" for s in guclu)
                 pdf_telefonlar.append((r, r.puan, guclu_yazi, r.tahmin > r.segment))
             st.download_button("📄 Bu listeyi PDF olarak indir (en iyi 10 telefon)",
@@ -1632,21 +1656,24 @@ with sekme_onerici:
             agirlik = {s: w * (1 - pil) for s, w in agirlik.items()}
             agirlik["battery_capacity"] = agirlik.get("battery_capacity", 0) + pil * .7
             agirlik["fast_charging"] = agirlik.get("fast_charging", 0) + pil * .3
-        yuzdelik = onerici_yuzdelikleri().loc[aday.index]
-        puan = sum(yuzdelik[s] * w for s, w in agirlik.items()) * 100
+        yuzdelik_tablo = onerici_yuzdelikleri().loc[aday.index]
+        puan = sum(yuzdelik_tablo[s] * w for s, w in agirlik.items()) * 100
         # Aynı modelin varyantları üst üste gelmesin: her modelden en yüksek puanlısı
         aday = (aday.assign(puan=puan.round(0)).sort_values(["puan", "price"], ascending=[False, True])
                 .drop_duplicates("temel_model"))
         st.markdown(f'<div class="alt" style="margin-top:.6rem">Cevaplarına uyan <b>{len(aday)}</b> model var. '
                     'İşte sana en uygun 3 tanesi:</div>', unsafe_allow_html=True)
-        kartlar = []
+        kartlar, pdf_telefonlar = [], []
         for sira, r in enumerate(aday.head(3).itertuples(), 1):
-            guclu = sorted(agirlik, key=lambda s: -yuzdelik.loc[r.Index, s])[:3]
+            guclu = sorted(agirlik, key=lambda s: -yuzdelik_tablo.loc[r.Index, s])[:3]
             neden = " · ".join(f"{OZELLIK_ADI[s][0]} {OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}"
                                for s in guclu)
             tahmini = float(np.exp(FIYAT_MODELI.predict(df.loc[[r.Index], OZELLIKLER])[0]))
             deger = ("💎 Fiyatına göre çok iyi" if r.price < tahmini * 0.85 else
                      "👍 Fiyatı donanımına uygun" if r.price < tahmini * 1.15 else "🏷️ Marka etkisiyle biraz pahalı")
+            pdf_telefonlar.append((r, r.puan, ", ".join(f"{OZELLIK_ADI[s][1]} {OZELLIK_ADI[s][2](df.at[r.Index, s])}"
+                                                         for s in guclu),
+                                   f"{deger.split(' ', 1)[1]} (donanımına göre yaklaşık {tl(tahmini)})"))
             html = kart_html(r)
             html = html[:-len("</div>")] + (f'<div class="butce-neden">Neden: {neden}</div>'
                                             f'<div class="butce-neden">{deger} (donanımına göre ~{tl(tahmini)})</div></div>')
@@ -1657,6 +1684,13 @@ with sekme_onerici:
         st.markdown(f'<div class="izgara">{"".join(kartlar)}</div>', unsafe_allow_html=True)
         st.caption("Puan, kullanım amacına göre ağırlıklandırılmış özelliklerin 970 telefon arasındaki yerinden "
                    "hesaplanıyor. \"Donanımına göre\" fiyat, ZANEDUSCV regresyon modelinin tahmini.")
+        cevaplar = [("Bütçe", "Fark etmez" if o_butce == 90000 else f"{o_butce:,.0f} TL".replace(",", ".")),
+                    ("Kullanım", o_kullanim.split(" ", 1)[1]), ("Pil ömrü", o_pil), ("Ekran", o_ekran),
+                    ("5G", "Olsun" if o_5g else "Fark etmez"), ("Marka", ", ".join(o_marka) or "Hepsi olur")]
+        st.download_button("📄 Önerileri PDF olarak indir",
+                           data=lambda a=(cevaplar, len(aday), pdf_telefonlar): onerici_pdf(*a),
+                           file_name="TeknoTahmin_telefon_onerileri.pdf", mime="application/pdf",
+                           key="pdf_onerici", on_click="ignore")
 
 # ------------------------------------------------------------
 # 6) Proje hakkında
