@@ -317,6 +317,17 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 .hata-aciklama {{ color: rgba(255,255,255,.7); font-size: .8rem; margin: .3rem 0; }}
 @media (max-width: 640px) {{ .oyun-kart ul {{ grid-template-columns: 1fr; }} .oyun-giris {{ font-size: 2.2rem; }} }}
 .radar {{ display: flex; flex-direction: column; align-items: center; }}
+.beyin {{ max-width: 520px; display: block; margin: .2rem auto 0; overflow: visible; }}
+.beyin-hat {{ stroke: #a78bfa; }}
+.beyin-sinyal {{ stroke: #f9a8d4; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 40; animation: beyin-akis 2.8s linear infinite; }}
+@keyframes beyin-akis {{ from {{ stroke-dashoffset: 84; }} to {{ stroke-dashoffset: 0; }} }}
+.beyin-dugum {{ transform-box: fill-box; transform-origin: center; animation: beyin-nabiz 2.8s ease-in-out infinite; }}
+@keyframes beyin-nabiz {{ 0%, 100% {{ transform: scale(1); }} 50% {{ transform: scale(1.09); }} }}
+.beyin-cekirdek {{ filter: drop-shadow(0 0 18px rgba(244,114,182,.55)); }}
+.beyin-merkez {{ fill: #ffffff; font-weight: 800; font-size: 19px; }}
+.beyin-etiket {{ fill: #f5f5ff; font-weight: 700; font-size: 15px; }}
+.beyin-yuzde {{ fill: #c4b5fd; font-size: 13px; font-weight: 700; }}
+@media (prefers-reduced-motion: reduce) {{ .beyin-sinyal, .beyin-dugum {{ animation: none; }} }}
 .lejant {{ display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center; color: #fff; font-size: .9rem; margin-top: .3rem; }}
 .lejant i {{ display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; }}
 .onem {{ display: grid; grid-template-columns: 120px 1fr 48px; gap: .6rem; align-items: center; margin: .35rem 0; color: #fff; font-size: .88rem; }}
@@ -1049,6 +1060,42 @@ RADAR_EKSENLERI = [("RAM", "ram_capacity"), ("Depolama", "internal_memory"), ("B
                    ("Yenileme", "refresh_rate"), ("Kamera", "primary_camera_rear")]
 
 
+def model_beyni_svg(onemler):
+    # "Model beyni": her özellik bir baloncuk. Baloncuğun büyüklüğü Random Forest'ın o özelliğe ne kadar dayandığı
+    # (özellik önemi). Çizgilerde akan noktalar, özelliklerden ortadaki karara giden sinyali temsil ediyor.
+    M, halka = 300, 200
+    en_buyuk = max(o for _, o in onemler)
+    parca = ['<defs><radialGradient id="beyin-cekirdek"><stop offset="0%" stop-color="#f9a8d4"/>'
+             '<stop offset="100%" stop-color="#7c3aed"/></radialGradient>'
+             '<radialGradient id="beyin-dugum"><stop offset="0%" stop-color="#c4b5fd"/>'
+             '<stop offset="100%" stop-color="#6d28d9"/></radialGradient></defs>']
+    dugumler = []
+    for i, (sutun, onem) in enumerate(onemler):
+        aci = -math.pi / 2 + 2 * math.pi * i / len(onemler)
+        x, y = M + halka * math.cos(aci), M + halka * math.sin(aci)
+        r = 16 + 36 * math.sqrt(onem / en_buyuk)
+        kalinlik = 1 + 7 * onem / en_buyuk
+        parca.append(f'<line class="beyin-hat" x1="{x:.1f}" y1="{y:.1f}" x2="{M}" y2="{M}" '
+                     f'stroke-width="{kalinlik:.1f}" stroke-opacity="{.25 + .6 * onem / en_buyuk:.2f}"/>')
+        parca.append(f'<line class="beyin-sinyal" x1="{x:.1f}" y1="{y:.1f}" x2="{M}" y2="{M}" '
+                     f'style="animation-delay:{i * .35:.2f}s"/>')
+        dugumler.append((sutun, onem, x, y, r, i))
+    parca.append(f'<circle class="beyin-cekirdek" cx="{M}" cy="{M}" r="62" fill="url(#beyin-cekirdek)"/>')
+    parca.append(f'<text class="beyin-merkez" x="{M}" y="{M - 6}" text-anchor="middle">Fiyat</text>'
+                 f'<text class="beyin-merkez" x="{M}" y="{M + 18}" text-anchor="middle">segmenti</text>')
+    for sutun, onem, x, y, r, i in dugumler:
+        ikon, ad, _ = OZELLIK_ADI[sutun]
+        parca.append(f'<g class="beyin-dugum" style="animation-delay:{i * .35:.2f}s">'
+                     f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="url(#beyin-dugum)"/>'
+                     f'<text x="{x:.1f}" y="{y + r * .28:.1f}" text-anchor="middle" font-size="{r * .8:.0f}">{ikon}</text></g>')
+        ust = y > M + 10  # alttaki baloncukların yazısı altta, üsttekilerin üstte dursun
+        ty = y + r + 18 if ust or abs(y - M) < 10 else y - r - 22
+        parca.append(f'<text class="beyin-etiket" x="{x:.1f}" y="{ty:.1f}" text-anchor="middle">{ad}</text>'
+                     f'<text class="beyin-yuzde" x="{x:.1f}" y="{ty + 17:.1f}" text-anchor="middle">%{onem * 100:.1f}</text>')
+    return (f'<svg class="beyin" viewBox="0 0 600 600" width="100%" role="img" '
+            f'aria-label="Model beyni: özelliklerin fiyat segmenti kararına etkisi">{"".join(parca)}</svg>')
+
+
 def radar_svg(telefonlar):
     # telefonlar: [(isim, satır, renk)]. Her eksen, özelliğin veri setindeki yeri (0-1).
     m, r, n = 210, 140, len(RADAR_EKSENLERI)
@@ -1204,6 +1251,8 @@ div:has(> input[role="combobox"]), [data-testid="stSelectbox"] div:has(> div > i
 .shap-satir { color: #1d1b33 !important; } .shap-ozet, .shap-ad i { color: #4a4766 !important; }
 .shap-iz { background: rgba(30,27,75,.07) !important; } .shap-iz::after { background: rgba(30,27,75,.35) !important; }
 .shap-deger.arti { color: #047857 !important; } .shap-deger.eksi { color: #b91c1c !important; }
+.beyin-etiket { fill: #1d1b33 !important; } .beyin-yuzde { fill: #6d28d9 !important; }
+.beyin-hat { stroke: #7c3aed !important; } .beyin-sinyal { stroke: #db2777 !important; }
 .shap-cubuk.arti { background: #10b981 !important; } .shap-cubuk.eksi { background: #ef4444 !important; }
 .oyun-skor, .oyun-kart { background: rgba(30,27,75,.05) !important; border-color: rgba(30,27,75,.12) !important; }
 .oyun-giris, .oyun-skor b, .oyun-marka, .oyun-kart li b, .oyun-cevaplar { color: #1d1b33 !important; }
@@ -2305,6 +2354,11 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 - Değerlendirme: Accuracy, Precision, Recall, F1-Score, Confusion Matrix, öğrenme eğrisi, özellik önemi,
   hata analizi.
 """)
+        st.markdown("#### 🧠 Model beyni")
+        st.markdown(model_beyni_svg(list(zip(OZELLIKLER, model.feature_importances_))), unsafe_allow_html=True)
+        st.caption("Her baloncuk modelin kullandığı bir özellik. Baloncuk ne kadar büyükse Random Forest fiyat "
+                   "segmentine karar verirken o özelliğe o kadar dayanıyor (özellik önemi, toplamı %100). Çizgilerde "
+                   "akan noktalar özelliklerden ortadaki karara giden sinyali gösteriyor.")
     with h2:
         st.markdown(f"""
 #### 🤖 Karşılaştırılan modeller (test seti)
