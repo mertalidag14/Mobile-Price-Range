@@ -17,7 +17,7 @@ def test_site_hatasiz_aciliyor(site):
 
 def test_sekmeler_var(site):
     adlar = [s.label for s in site.tabs]
-    for beklenen in ["Fiyat Tahmini", "Telefon Kataloğu", "Karşılaştır", "Telefon Önerici", "Markalar",
+    for beklenen in ["Fiyat Tahmini", "Telefon Bul", "Telefon Kataloğu", "Karşılaştır", "Telefon Önerici", "Markalar",
                      "Hocayı Yen", "Hata Galerisi", "Proje Hakkında"]:
         assert any(beklenen in ad for ad in adlar), beklenen
 

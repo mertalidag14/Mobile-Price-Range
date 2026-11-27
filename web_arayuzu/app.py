@@ -324,9 +324,22 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 .km td, .km th {{ text-align: center; padding: .45rem .5rem; border-radius: 8px; min-width: 58px; }}
 .km th {{ color: rgba(255,255,255,.65); font-weight: 600; font-size: .75rem; }}
 [class*="st-key-gizlijs"] {{ display: none !important; }}
-.stTabs [data-baseweb="tab-list"] {{ gap: .4rem; }}
-.stTabs [data-baseweb="tab"] {{ background: rgba(255,255,255,.06); border-radius: 12px; padding: .4rem 1rem; }}
-.stTabs [aria-selected="true"] {{ background: rgba(167,139,250,.25); }}
+.stTabs [role="tablist"] {{ gap: .5rem; }}
+.stTabs [data-testid="stTab"] {{ background: rgba(255,255,255,.06); border-radius: 14px; padding: .55rem 1.2rem;
+  border: 1px solid rgba(255,255,255,.1); }}
+.stTabs [data-testid="stTab"] p {{ font-size: 1rem; font-weight: 700; }}
+.stTabs [aria-selected="true"] {{ background: rgba(167,139,250,.25); border-color: rgba(196,181,253,.55); }}
+.stTabs .react-aria-SelectionIndicator {{ display: none; }}
+/* Alt sekmeler (Telefon Bul ve Proje içindekiler): daha küçük, sade, altı çizili */
+.stTabs .stTabs [role="tablist"] {{ gap: 1.4rem; border-bottom: 1px solid rgba(255,255,255,.1); margin-bottom: .4rem; }}
+.stTabs .stTabs [data-testid="stTab"] {{ background: transparent; border: 0; border-radius: 0; padding: .35rem 0;
+  border-bottom: 2px solid transparent; }}
+.stTabs .stTabs [data-testid="stTab"] p {{ font-size: .92rem; font-weight: 600; opacity: .7; }}
+.stTabs .stTabs [aria-selected="true"] {{ background: transparent; border-bottom-color: #c4b5fd; }}
+.stTabs .stTabs [aria-selected="true"] p {{ opacity: 1; }}
+/* Marka şeridi: daha küçük ve sade */
+.st-key-marka_seridi button {{ padding: .2rem .7rem !important; background: rgba(255,255,255,.04) !important; }}
+.st-key-marka_seridi button p {{ font-size: .82rem !important; font-weight: 700 !important; }}
 .acilis {{ min-height: 78vh; display: flex; align-items: center; justify-content: center; border-radius: 22px;
 background: radial-gradient(ellipse at 50% 35%, rgba(167,139,250,.22), transparent 65%); }}
 .acilis-kutu {{ text-align: center; max-width: 520px; padding: 2rem; }}
@@ -930,13 +943,14 @@ def js_calistir(kod):
         st.html(f"<script>(()=>{{{kod}}})();</script>", unsafe_allow_javascript=True)
 
 
-def sekmeye_gec(sira):
-    js_calistir("let d=0;const f=()=>{const t=document.querySelectorAll('[role=\"tab\"]');"
-                f"if(t.length>{sira}){{const e=t[{sira}];const o={{bubbles:true,cancelable:true,pointerId:1,"
-                "pointerType:'mouse',isPrimary:true,button:0};"
+def sekmeye_gec(*adlar):
+    # Sekmeler iç içe (ör. "Telefon Bul" > "Telefon Kataloğu"), bu yüzden sırayla adlarına göre tıklanıyor
+    js_calistir(f"const adlar={json.dumps(list(adlar), ensure_ascii=False)};let i=0,d=0;"
+                "const tikla=e=>{const o={bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',isPrimary:true,button:0};"
                 "e.dispatchEvent(new PointerEvent('pointerdown',o));e.dispatchEvent(new MouseEvent('mousedown',o));"
-                "e.dispatchEvent(new PointerEvent('pointerup',o));e.dispatchEvent(new MouseEvent('mouseup',o));"
-                "e.click();e.scrollIntoView({behavior:'smooth',block:'center'});}"
+                "e.dispatchEvent(new PointerEvent('pointerup',o));e.dispatchEvent(new MouseEvent('mouseup',o));e.click();};"
+                "const f=()=>{const e=[...document.querySelectorAll('[role=\"tab\"]')].find(t=>t.innerText.trim()===adlar[i]);"
+                "if(e){tikla(e);i++;if(i < adlar.length){setTimeout(f,120);}else{e.scrollIntoView({behavior:'smooth',block:'center'});}}"
                 "else if(d++ < 40)setTimeout(f,100)};f();")
 
 
@@ -946,7 +960,7 @@ AYDINLIK_TEMA_CSS = """
 .block-container { background: rgba(255,255,255,.86) !important; border-color: rgba(30,27,75,.12) !important;
   box-shadow: 0 30px 80px rgba(60,50,140,.18) !important; }
 .stApp, .stApp p, .stApp li, .stApp label, .stApp h1, .stApp h2, .stApp h3, [data-testid="stMarkdownContainer"],
-[data-testid="stWidgetLabel"] p, [data-testid="stCaptionContainer"], .stTabs [data-baseweb="tab"] p { color: #1d1b33 !important; }
+[data-testid="stWidgetLabel"] p, [data-testid="stCaptionContainer"], .stTabs [data-testid="stTab"] p { color: #1d1b33 !important; }
 .logo-alt, .alt, .sonuc .aralik, .sonuc .ust, .kart ul, .mini-bilgi, .neden li i, .neden-not, .not, .butce-neden,
 .etiket-marka, .markalar .etiket, .cetvel .sinirlar small, .onem .deger, .km th, .tablo th:first-child, .tablo td:first-child
   { color: #4a4766 !important; }
@@ -968,8 +982,15 @@ AYDINLIK_TEMA_CSS = """
 [data-testid="stNumberInput"] input, [data-testid="stNumberInputContainer"] { background: #ffffff !important;
   color: #1d1b33 !important; border-color: rgba(30,27,75,.18) !important; }
 [data-baseweb="tag"] { background: #ede9fe !important; color: #1d1b33 !important; }
-.stTabs [data-baseweb="tab"] { background: rgba(30,27,75,.05) !important; }
+.stTabs [data-testid="stTab"] { background: rgba(30,27,75,.05) !important; }
 .stTabs [aria-selected="true"] { background: rgba(124,58,237,.16) !important; }
+.stTabs [data-testid="stTab"] { border-color: #e6e1fa !important; }
+.stTabs [aria-selected="true"] { border-color: #a78bfa !important; }
+.stTabs [aria-selected="true"] p { color: #5b21b6 !important; }
+.stTabs .stTabs [data-testid="stTab"], .stTabs .stTabs [aria-selected="true"] { background: transparent !important; }
+.stTabs .stTabs [role="tablist"] { border-bottom-color: #ebe8f7 !important; }
+.stTabs .stTabs [aria-selected="true"] { border-bottom-color: #7c3aed !important; }
+.st-key-marka_seridi button { background: #ffffff !important; }
 .radar text { fill: #1d1b33 !important; }
 .acilis { background: radial-gradient(ellipse at 50% 30%, #ede9fe, #eef0fb 70%) !important; }
 .acilis-alt { color: #4a4766 !important; }
@@ -1083,7 +1104,7 @@ if _ayar_css:
 def marka_tikla(marka):
     # Sayfa yeniden yüklenmeden katalog o markaya göre süzülür ve katalog sekmesine geçilir
     st.session_state["k_marka"] = [marka]
-    st.session_state["_sekmeye_git"] = 1
+    st.session_state["_sekmeye_git"] = ("🛒 Telefon Bul", "Telefon Kataloğu")
 
 
 def logo_maskesi(marka):
@@ -1107,7 +1128,7 @@ if "tel" in st.query_params:
             st.session_state["t_algo"] = st.query_params.get("model")
     st.query_params.clear()
 
-ilk_markalar = df["marka"].value_counts().head(12)
+ilk_markalar = df["marka"].value_counts().head(7)
 marka_css = []
 with st.container(horizontal=True, key="marka_seridi", gap="small"):
     st.markdown('<span class="etiket-marka">Popüler markalar</span>', unsafe_allow_html=True, width="content")
@@ -1125,22 +1146,26 @@ with st.container(horizontal=True, key="marka_seridi", gap="small"):
         st.button(etiket, key=f"mb_{i}", on_click=marka_tikla, args=(m,), help=f"{m} telefonlarını göster")
 st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer kaplamaz
 
-(sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_markalar, sekme_oyun,
- sekme_hatalar, sekme_hakkinda) = st.tabs(
-    ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "🧭 Telefon Önerici",
-     "🏷️ Markalar", "🎮 Hocayı Yen", "🕵️ Hata Galerisi", "📊 Proje Hakkında"])
+# Üst menü sade olsun diye 4 ana sekme var; telefon arama araçları ve proje bölümleri kendi içinde alt sekmelerde
+sekme_tahmin, sekme_bul, sekme_oyun, sekme_proje = st.tabs(
+    ["🔮 Fiyat Tahmini", "🛒 Telefon Bul", "🎮 Hocayı Yen", "📊 Proje"])
+with sekme_bul:
+    sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_markalar = st.tabs(
+        ["Telefon Kataloğu", "Karşılaştır", "Bütçeme Göre", "Telefon Önerici", "Markalar"])
+with sekme_proje:
+    sekme_hakkinda, sekme_hatalar = st.tabs(["Proje Hakkında", "Hata Galerisi"])
 # Katalogda ikinci telefona "Karşılaştır" basılınca sekmeyi sunucuyu beklemeden tarayıcıda hemen aç
 js_calistir("if(window.__karsHizli)return;window.__karsHizli=1;document.addEventListener('click',e=>{"
             "const b=e.target.closest('button');if(!b||b.innerText.trim()!=='⚖️ Karşılaştır')return;"
             "if(!document.body.innerText.includes('Karşılaştırmak için bir telefon daha seç'))return;"
-            "const t=document.querySelectorAll('[role=\"tab\"]');if(t.length>2){const s=t[2];"
+            "const s=[...document.querySelectorAll('[role=\"tab\"]')].find(t=>t.innerText.trim()==='Karşılaştır');if(s){"
             "const o={bubbles:true,cancelable:true,pointerId:1,pointerType:'mouse',isPrimary:true,button:0};"
             "s.dispatchEvent(new PointerEvent('pointerdown',o));s.dispatchEvent(new MouseEvent('mousedown',o));"
             "s.dispatchEvent(new PointerEvent('pointerup',o));s.dispatchEvent(new MouseEvent('mouseup',o));"
             "s.click();window.scrollTo({top:0,behavior:'smooth'});}},true);")
 # Sekme geçişi en başta gönderiliyor: sayfanın geri kalanı hazırlanırken sekme hemen açılıyor (donma hissi olmasın)
 if "_sekmeye_git" in st.session_state:
-    sekmeye_gec(st.session_state.pop("_sekmeye_git"))
+    sekmeye_gec(*st.session_state.pop("_sekmeye_git"))
 
 # ------------------------------------------------------------
 # 1) Tahmin
@@ -1485,7 +1510,7 @@ def karsilastirmaya_ekle(sira):
     secilenler = [s for s in st.session_state.get("kars", []) if s != sira] + [sira]
     if len(secilenler) == 2:
         # İki telefon seçildi: karşılaştırma sekmesi güncellensin diye tüm sayfa yenilenecek
-        st.session_state.update(k1=secilenler[0], k2=secilenler[1], kars=[], _sekmeye_git=2, _tam_yenile=True)
+        st.session_state.update(k1=secilenler[0], k2=secilenler[1], kars=[], _sekmeye_git=("🛒 Telefon Bul", "Karşılaştır"), _tam_yenile=True)
     else:
         st.session_state["kars"] = secilenler
 
