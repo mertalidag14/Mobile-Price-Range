@@ -318,6 +318,18 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 @media (max-width: 640px) {{ .oyun-kart ul {{ grid-template-columns: 1fr; }} .oyun-giris {{ font-size: 2.2rem; }} }}
 .radar {{ display: flex; flex-direction: column; align-items: center; }}
 .beyin {{ max-width: 520px; display: block; margin: .2rem auto 0; overflow: visible; }}
+.ekip-kartlar {{ display: flex; flex-direction: column; gap: .6rem; }}
+.ekip-kart {{ display: flex; gap: .9rem; align-items: flex-start; padding: .8rem 1rem; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }}
+.ekip-avatar {{ flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: #fff; background: linear-gradient(135deg, #7c3aed, #db2777); box-shadow: 0 4px 14px rgba(124,58,237,.35); }}
+.ekip-ad {{ font-weight: 800; color: #fff; font-size: 1rem; }}
+.ekip-rol {{ color: #c4b5fd; font-size: .82rem; font-weight: 700; margin: .05rem 0 .2rem; }}
+.ekip-is {{ color: rgba(255,255,255,.72); font-size: .82rem; line-height: 1.4; }}
+.sayi-izgara {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-top: .3rem; }}
+.sayi-kutu {{ padding: .7rem .6rem; border-radius: 14px; text-align: center; background: rgba(167,139,250,.1); border: 1px solid rgba(167,139,250,.25); }}
+.sayi-kutu b {{ display: block; font-size: 1.35rem; font-weight: 900; color: #fff; }}
+.sayi-kutu span {{ font-size: .75rem; color: rgba(255,255,255,.7); }}
+.github-dugme {{ display: inline-block; margin-top: .9rem; padding: .5rem 1rem; border-radius: 12px; font-weight: 700; text-decoration: none !important; color: #fff !important; background: linear-gradient(135deg, #7c3aed, #a855f7); }}
+@media (max-width: 640px) {{ .sayi-izgara {{ grid-template-columns: repeat(2, 1fr); }} }}
 .beyin-hat {{ stroke: #a78bfa; }}
 .beyin-sinyal {{ stroke: #f9a8d4; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 2 40; animation: beyin-akis 2.8s linear infinite; }}
 @keyframes beyin-akis {{ from {{ stroke-dashoffset: 84; }} to {{ stroke-dashoffset: 0; }} }}
@@ -1060,6 +1072,27 @@ RADAR_EKSENLERI = [("RAM", "ram_capacity"), ("Depolama", "internal_memory"), ("B
                    ("Yenileme", "refresh_rate"), ("Kamera", "primary_camera_rear")]
 
 
+def ekip_ve_sayilar_html():
+    # Proje Hakkında: ekip kartları ve projenin rakamları
+    ekip = [("MA", "Mert Ali Dağ", "Kodlama, modeller ve site",
+             "Ön işleme, 7 model + GridSearchCV, ZANEDUSCV algoritması, TeknoTahmin sitesi, Docker / Render"),
+            ("GT", "Gürkan Tural", "Veri analizi",
+             "Veri temizleme, v1 ve v2 keşifsel veri analizi (EDA), özelliklerin fiyata etkisi"),
+            ("ET", "Efe Erdem", "Araştırma ve raporlama",
+             "Literatür araştırması, ön işleme belgesi, v1 ve v2 veri hata raporları")]
+    kartlar = "".join(f'<div class="ekip-kart"><div class="ekip-avatar">{bas}</div><div><div class="ekip-ad">{ad}</div>'
+                      f'<div class="ekip-rol">{rol}</div><div class="ekip-is">{isler}</div></div></div>'
+                      for bas, ad, rol, isler in ekip)
+    sayilar = [(f"{len(df)}", "gerçek telefon"), (f"{df['marka'].nunique()}", "marka"), ("7", "karşılaştırılan model"),
+               (f"%{DOGRULUK * 100:.0f}", "sitedeki test doğruluğu"), ("20", "otomatik test"), ("~25 sn", "sitenin açılışı")]
+    kutular = "".join(f'<div class="sayi-kutu"><b>{deger}</b><span>{ad}</span></div>' for deger, ad in sayilar)
+    return (f'<div class="ekip-kartlar">{kartlar}</div>'
+            '<a class="github-dugme" href="https://github.com/mertalidag14/Mobile-Price-Range" target="_blank">'
+            '📂 Projenin GitHub sayfası</a>',
+            '<div class="bolum" style="margin-top:1.2rem">📊 Rakamlarla proje</div>'
+            f'<div class="sayi-izgara">{kutular}</div>')
+
+
 def model_beyni_svg(onemler):
     # "Model beyni": her özellik bir baloncuk. Baloncuğun büyüklüğü Random Forest'ın o özelliğe ne kadar dayandığı
     # (özellik önemi). Çizgilerde akan noktalar, özelliklerden ortadaki karara giden sinyali temsil ediyor.
@@ -1252,6 +1285,10 @@ div:has(> input[role="combobox"]), [data-testid="stSelectbox"] div:has(> div > i
 .shap-iz { background: rgba(30,27,75,.07) !important; } .shap-iz::after { background: rgba(30,27,75,.35) !important; }
 .shap-deger.arti { color: #047857 !important; } .shap-deger.eksi { color: #b91c1c !important; }
 .beyin-etiket { fill: #1d1b33 !important; } .beyin-yuzde { fill: #6d28d9 !important; }
+.ekip-kart { background: #ffffff !important; border-color: #ebe8f7 !important; box-shadow: 0 6px 18px rgba(30,27,75,.06); }
+.ekip-ad, .sayi-kutu b { color: #1d1b33 !important; } .ekip-rol { color: #6d28d9 !important; }
+.ekip-is, .sayi-kutu span { color: #4a4766 !important; }
+.sayi-kutu { background: #f5f3ff !important; border-color: #ddd6fe !important; }
 .beyin-hat { stroke: #7c3aed !important; } .beyin-sinyal { stroke: #db2777 !important; }
 .shap-cubuk.arti { background: #10b981 !important; } .shap-cubuk.eksi { background: #ef4444 !important; }
 .oyun-skor, .oyun-kart { background: rgba(30,27,75,.05) !important; border-color: rgba(30,27,75,.12) !important; }
@@ -2359,6 +2396,8 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
         st.caption("Her baloncuk modelin kullandığı bir özellik. Baloncuk ne kadar büyükse Random Forest fiyat "
                    "segmentine karar verirken o özelliğe o kadar dayanıyor (özellik önemi, toplamı %100). Çizgilerde "
                    "akan noktalar özelliklerden ortadaki karara giden sinyali gösteriyor.")
+        # Ekip kartları sağ sütunu uzattığı için rakamlar sol sütunda, Model beyninin altında
+        st.markdown(ekip_ve_sayilar_html()[1], unsafe_allow_html=True)
     with h2:
         st.markdown(f"""
 #### 🤖 Karşılaştırılan modeller (test seti)
@@ -2395,10 +2434,8 @@ hangi **fiyat segmentinde** olduğunu makine öğrenmesiyle tahmin etmek.
 - **Git & GitHub** (sürüm kontrolü, kanban tablosu)
 
 #### 👥 Ekip
-Mert Ali Dağ · Gürkan Tural · Efe Erdem
-
-[📂 Projenin GitHub sayfası](https://github.com/mertalidag14/Mobile-Price-Range)
 """)
+        st.markdown(ekip_ve_sayilar_html()[0], unsafe_allow_html=True)
 
     # Grafikler: sitedeki modelden canlı hesaplanır
     st.markdown('<div class="bolum" style="margin-top:1.4rem;font-size:1.25rem">📈 Modelin grafikleri</div>',
