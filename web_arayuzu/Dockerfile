@@ -14,6 +14,10 @@ COPY fontlar ./fontlar
 # Mert Ali Dağ'ın algoritması ZANEDUSCV (github.com/mertalidag14/ZANEDUSCV) dosyaları
 COPY zaneduscv ./zaneduscv
 
+# Modeller imaj hazırlanırken bir kez eğitilip kaydediliyor: site uykudan uyanınca yeniden eğitim yok, açılış hızlı
+COPY on_egitim.py ./
+RUN python on_egitim.py
+
 # Render, uygulamanın dinlemesi gereken portu PORT değişkeniyle verir
 ENV PORT=8501
 EXPOSE 8501

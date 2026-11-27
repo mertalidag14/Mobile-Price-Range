@@ -31,6 +31,7 @@ def test_paylasma_linkiyle_tahmin_ve_shap():
     html = " ".join(str(m.value) for m in at.markdown)
     assert "tahmin-sonucu" in html
     assert "SHAP" in html
+    assert "benzeyen 3 gerçek telefon" in html
 
 
 def test_oyun_bir_tur_oynanabiliyor(site):
@@ -48,3 +49,4 @@ def test_oyun_bir_tur_oynanabiliyor(site):
 def test_hata_galerisi_dolu(site):
     html = " ".join(str(m.value) for m in site.markdown)
     assert html.count("hata-kart") > 10
+

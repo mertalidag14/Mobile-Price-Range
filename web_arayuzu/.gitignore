@@ -1,0 +1,3 @@
+# Docker'da on_egitim.py ile oluşturulan model kayıtları (depoya eklenmiyor)
+hazir_modeller/
+__pycache__/

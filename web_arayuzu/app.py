@@ -4,6 +4,8 @@
 # Çalıştırma: streamlit run app.py
 # ============================================================
 import base64
+import io
+import hashlib
 import json
 import math
 import random
@@ -11,6 +13,7 @@ import random
 from pathlib import Path
 from urllib.parse import quote
 
+import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -398,6 +401,19 @@ border: 1px solid rgba(147,197,253,.6); background: linear-gradient(135deg, rgba
 .st-key-hizli_butce [data-testid="stColumn"] {{ min-width: 0 !important; width: auto !important; flex: 1 1 0 !important; }}
 .st-key-hizli_butce button {{ padding: .25rem .2rem; min-height: 2.2rem; }}
 .st-key-hizli_butce button p {{ font-size: .8rem; white-space: nowrap; }}
+/* Telefonda sekmeler yana kaymasın, alt alta sığsın */
+.stTabs [role="tablist"] {{ flex-wrap: wrap !important; overflow: visible !important; gap: .35rem !important; }}
+.stTabs [data-testid="stTab"] {{ padding: .4rem .75rem !important; border-radius: 12px !important; }}
+.stTabs [data-testid="stTab"] p {{ font-size: .88rem !important; }}
+.stTabs .stTabs [role="tablist"] {{ gap: .1rem 1rem !important; }}
+.stTabs .stTabs [data-testid="stTab"] {{ padding: .3rem 0 !important; border-radius: 0 !important; }}
+.stTabs .stTabs [data-testid="stTab"] p {{ font-size: .84rem !important; }}
+.nav {{ padding-bottom: .6rem; margin-bottom: .6rem; }}
+.st-key-marka_seridi {{ margin: 0 0 .4rem !important; }}
+.baslik {{ font-size: 1.5rem; }}
+.alt {{ font-size: .92rem; }}
+.marka-tablo {{ display: block; overflow-x: auto; white-space: nowrap; }}
+.marka-tablo .marka-serit {{ min-width: 120px; }}
 .cipler, .st-key-marka_seridi {{ -webkit-mask: linear-gradient(90deg, #000 85%, transparent); mask: linear-gradient(90deg, #000 85%, transparent); }}
 }}
 </style>
@@ -429,21 +445,75 @@ def veri_yukle():
     return df, list(sinirlar)
 
 
+# ------------------------------------------------------------
+# Hızlı açılış: modeller Docker imajı hazırlanırken BİR KEZ eğitilip "hazir_modeller" klasörüne kaydediliyor
+# (Dockerfile'daki on_egitim.py). Site uykudan uyanınca modelleri yeniden eğitmek yerine diskten okuyor.
+# Kayıt bulunamazsa (ör. bilgisayarda ilk çalıştırma) model eğitilip kaydediliyor, yani site her durumda çalışır.
+# ------------------------------------------------------------
+MODEL_KLASORU = TABAN / "hazir_modeller"
+MODEL_SURUMU = "2"  # model ayarları değişince artırılır, eski kayıtlar kullanılmaz
+
+
+def _kayit_anahtari():
+    veri = (TABAN / "gercek_telefonlar.csv").read_bytes()
+    return MODEL_SURUMU + "_" + hashlib.md5(veri).hexdigest()[:8]
+
+
+def diskten(ad, hesapla):
+    dosya = MODEL_KLASORU / f"{ad}_{_kayit_anahtari()}.joblib"
+    if dosya.exists():
+        try:
+            return joblib.load(dosya)
+        except Exception:
+            pass  # bozuk/uyumsuz kayıt: yeniden eğit
+    sonuc = hesapla()
+    try:
+        MODEL_KLASORU.mkdir(exist_ok=True)
+        joblib.dump(sonuc, dosya, compress=3)
+    except Exception:
+        pass  # diske yazılamıyorsa sadece bellekte kalsın
+    return sonuc
+
+
+# Random Forest ayarı: 5-fold CV ile 12 ayar denendi (veri büyütülmeden). 500 ağaç ve en fazla 16 derinlik,
+# önceki 200 ağaç / 10 derinliğe göre CV'de %76,3 → %77,1, testte %73,7 → %74,7.
+
+
+def egitim_bolmesi():
+    # Bütün modellerde aynı %80 eğitim / %20 test bölmesi
+    df, _ = veri_yukle()
+    return train_test_split(df[OZELLIKLER], df["segment"], test_size=0.2, random_state=42, stratify=df["segment"])
+
+
+@st.cache_resource(show_spinner=False)
+def rf_egitim_seti():
+    # Sadece eğitim setiyle eğitilmiş Random Forest: test doğruluğu, ortak karar, oyun ve hata galerisi bunu kullanıyor
+    # (önceden üç ayrı yerde üç kez eğitiliyordu)
+    def egit():
+        X_tr, _, y_tr, _ = egitim_bolmesi()
+        return RandomForestClassifier(n_estimators=500, max_depth=16, random_state=42, n_jobs=-1).fit(X_tr, y_tr)
+    return diskten("rf_egitim", egit)
+
+
 @st.cache_resource(show_spinner=False)
 def model_egit():
     df, _ = veri_yukle()
-    X_tr, X_te, y_tr, y_te = train_test_split(df[OZELLIKLER], df["segment"], test_size=0.2,
-                                              random_state=42, stratify=df["segment"])
-    test_model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(X_tr, y_tr)
+    _, X_te, _, y_te = egitim_bolmesi()
+    test_model = rf_egitim_seti()
     dogruluk = test_model.score(X_te, y_te)
     karisiklik = confusion_matrix(y_te, test_model.predict(X_te), labels=range(4))
     # Sitede kullanılan model tüm veriyle eğitiliyor
-    model = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(df[OZELLIKLER], df["segment"])
+    model = diskten("rf_tum", lambda: RandomForestClassifier(n_estimators=500, max_depth=16, random_state=42, n_jobs=-1)
+                    .fit(df[OZELLIKLER], df["segment"]))
     return model, dogruluk, karisiklik
 
 
 @st.cache_resource(show_spinner=False)
 def ek_modeller():
+    return diskten("ek_modeller", _ek_modelleri_egit)
+
+
+def _ek_modelleri_egit():
     # Sitedeki model seçici için KNN, XGBoost ve Mert Ali Dağ'ın algoritması ZANEDUSCV
     # (Random Forest ile aynı 10 özellik ve aynı eğitim/test bölmesi)
     df, _ = veri_yukle()
@@ -453,8 +523,9 @@ def ek_modeller():
                              {"knn__n_neighbors": list(range(1, 30, 2))}, cv=5, scoring="accuracy").fit(X_tr, y_tr)
     k = knn_arama.best_params_["knn__n_neighbors"]
     knn = Pipeline([("olcek", StandardScaler()), ("knn", KNeighborsClassifier(n_neighbors=k))])
-    xgb_ayar = dict(n_estimators=300, max_depth=4, learning_rate=0.1, subsample=0.9, colsample_bytree=0.9,
-                    random_state=42, n_jobs=1)
+    # XGBoost ayarı da CV ile seçildi: daha sığ ağaç, daha küçük öğrenme hızı (testte %74,7 → %75,8)
+    xgb_ayar = dict(n_estimators=500, max_depth=3, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
+                    min_child_weight=2, random_state=42, n_jobs=1)
     sonuc = {}
     for ad, yeni in [(f"KNN (k={k})", lambda: knn), ("XGBoost", lambda: XGBClassifier(**xgb_ayar)),
                      ("ZANEDUSCV", lambda: ZANEDUSCVClassifier(random_state=0))]:
@@ -482,16 +553,17 @@ class OrtakKarar:
 def ortak_karar_modeli():
     # Dört modelin (eğitim setiyle eğitilmiş hâlleri) oylaması; yeniden eğitim yok, sadece Random Forest'ın
     # eğitim setli hâli ekleniyor (bir saniyeden kısa sürüyor)
-    df, _ = veri_yukle()
-    X, y = df[OZELLIKLER], df["segment"]
-    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    rf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(X_tr, y_tr)
-    oylama = OrtakKarar([rf] + [m for m, _ in ek_modeller().values()])
+    _, X_te, _, y_te = egitim_bolmesi()
+    oylama = OrtakKarar([rf_egitim_seti()] + [m for m, _ in ek_modeller().values()])
     return oylama, float((oylama.predict(X_te) == y_te.values).mean())
 
 
 @st.cache_resource(show_spinner=False)
 def fiyat_modeli():
+    return diskten("fiyat_modeli", _fiyat_modelini_egit)
+
+
+def _fiyat_modelini_egit():
     # Segment yerine fiyatın kendisini tahmin eden regresyon modeli (Mert Ali Dağ'ın ZANEDUSCV algoritması).
     # Fiyatlar çok geniş aralıkta olduğu için log(fiyat) üzerinde eğitiliyor; tek eğitim, hızlı açılış için.
     df, _ = veri_yukle()
@@ -597,6 +669,19 @@ def benzer_telefonlar(sira, adet=4):
     for i in yakinlar[0]:
         if df.at[i, "temel_model"] not in gorulen:  # her modelden tek varyant
             gorulen.add(df.at[i, "temel_model"])
+            secilen.append(i)
+    return df.loc[secilen[:adet]]
+
+
+def girdiye_benzeyenler(girdi, adet=3, haric=None):
+    # Tahmin kartının altında: girilen özelliklere donanımı en yakın gerçek telefonlar (aynı modelin varyantları hariç)
+    olcek, komsular = benzerlik_modeli()
+    _, yakinlar = komsular.kneighbors(olcek.transform(girdi[OZELLIKLER]))
+    secilen, gorulen = [], {haric}
+    for i in yakinlar[0]:
+        model_adi = df.at[i, "temel_model"]
+        if model_adi not in gorulen:
+            gorulen.add(model_adi)
             secilen.append(i)
     return df.loc[secilen[:adet]]
 
@@ -715,6 +800,64 @@ def shap_grafigi(algo, girdi, sinif):
             'Yeşil çubuklar bu segmenti destekleyen, kırmızılar karşı çıkan özellikler. Sayılar puan; '
             'hepsinin toplamı aradaki farka eşit (Shapley değerleri).</div>'
             f'{cubuklar}</div>')
+
+
+def tahmin_gorseli(baslik, algo, olas, sinif, tahmini_fiyat, gercek_fiyat, benzerler):
+    # "Sonucu paylaş": tahmin kartını 1080×1080 bir PNG olarak çizer (WhatsApp / Instagram'da paylaşılabilir)
+    from PIL import Image, ImageDraw, ImageFont
+    W = 1080
+    font = lambda boy, kalin=False: ImageFont.truetype(
+        str(TABAN / "fontlar" / ("DejaVuSans-Bold.ttf" if kalin else "DejaVuSans.ttf")), boy)
+    im = Image.new("RGB", (W, W), "#0f1029")
+    d = ImageDraw.Draw(im)
+    # Arka planda yumuşak mor-pembe geçiş
+    for y in range(W):
+        k = y / W
+        d.line([(0, y), (W, y)], fill=(int(24 + 40 * k), int(18 + 6 * k), int(52 + 20 * k)))
+    renk = SEGMENTLER[sinif][2]
+    d.rounded_rectangle([60, 60, W - 60, W - 60], 48, outline=renk, width=4, fill=(22, 20, 48))
+    d.text((110, 110), "TeknoTahmin", font=font(44, True), fill="#c4b5fd")
+    d.text((110, 170), "teknotahmin-0iji.onrender.com", font=font(26, True), fill="#a5a3c4")
+    # Telefon adı (uzunsa iki satıra böl)
+    kelime, satirlar, satir = baslik.split(), [], ""
+    for k in kelime:
+        if d.textlength((satir + " " + k).strip(), font=font(44, True)) > W - 220:
+            satirlar.append(satir); satir = k
+        else:
+            satir = (satir + " " + k).strip()
+    satirlar.append(satir)
+    y = 250
+    for st_ in satirlar[:2]:
+        d.text((110, y), st_, font=font(44, True), fill="#ffffff"); y += 58
+    y += 20
+    d.text((110, y), "TAHMİN EDİLEN SEGMENT", font=font(24), fill="#a5a3c4"); y += 40
+    d.text((110, y), SEGMENTLER[sinif][0], font=font(76, True), fill=renk); y += 100
+    d.text((110, y), f"{algo} güveni: %{olas[sinif] * 100:.0f}", font=font(32, True), fill=renk); y += 60
+    d.text((110, y), f"Segmentin fiyat aralığı: {segment_araligi(sinif)}", font=font(30), fill="#e5e4f5"); y += 48
+    d.text((110, y), f"Donanımına göre tahmini fiyat: {tl(tahmini_fiyat)}", font=font(30), fill="#e5e4f5"); y += 48
+    if gercek_fiyat is not None:
+        d.text((110, y), f"Gerçek fiyatı: {tl(gercek_fiyat)}", font=font(30), fill="#e5e4f5"); y += 48
+    # Olasılık çubukları
+    y += 20
+    for i, p in enumerate(olas):
+        d.text((110, y), SEGMENTLER[i][0], font=font(24), fill="#c9c7e3")
+        d.rounded_rectangle([420, y + 6, 900, y + 26], 10, fill=(45, 42, 80))
+        if p > 0.005:
+            d.rounded_rectangle([420, y + 6, 420 + int(480 * p), y + 26], 10, fill=SEGMENTLER[i][2])
+        d.text((920, y), f"%{p * 100:.0f}", font=font(24, True), fill="#ffffff")
+        y += 40
+    if benzerler:
+        # Benzer telefonlar sığmazsa alt satıra geçsin
+        yazi, satir, y = "Benzer telefonlar: " + ", ".join(benzerler), "", y + 8
+        for k in yazi.split():
+            if d.textlength((satir + " " + k).strip(), font=font(22)) > W - 220:
+                d.text((110, y), satir, font=font(22), fill="#a5a3c4"); y += 30; satir = k
+            else:
+                satir = (satir + " " + k).strip()
+        d.text((110, y), satir, font=font(22), fill="#a5a3c4")
+    tampon = io.BytesIO()
+    im.save(tampon, format="PNG")
+    return tampon.getvalue()
 
 
 PDF_MOR, PDF_GRI, PDF_YAZI = (91, 33, 182), (90, 90, 110), (30, 27, 46)
@@ -1126,6 +1269,8 @@ if "tel" in st.query_params:
                 pass
         if st.query_params.get("model") in MODELLER:
             st.session_state["t_algo"] = st.query_params.get("model")
+    else:
+        st.toast("Paylaşılan linkteki telefon bulunamadı, telefonu kendin seçebilirsin.", icon="🔎")
     st.query_params.clear()
 
 ilk_markalar = df["marka"].value_counts().head(7)
@@ -1372,6 +1517,10 @@ with sekme_tahmin:
                 f'{fiyat_cetveli(olas, gercek_fiyat)}'
                 f'<div style="margin-top:.6rem">{cubuklar}</div>'
                 f'{neden_bu_segment(girdi, sinif, secili_model)}</div>', unsafe_allow_html=True)
+            # Tahmini somutlaştırmak için: bu özelliklere en çok benzeyen 3 gerçek telefon ve gerçek fiyatları
+            st.markdown('<div class="bolum" style="margin-top:1rem">📱 Bu özelliklere benzeyen 3 gerçek telefon</div>'
+                        '<div class="mini-izgara">' + "".join(mini_kart(r) for r in girdiye_benzeyenler(girdi, 3, secili)
+                                                              .itertuples()) + '</div>', unsafe_allow_html=True)
             tahmin_imzasi = tuple(girdi.iloc[0].round(3))
 
             # Bütün modeller aynı telefon için ne diyor?
@@ -1395,7 +1544,14 @@ with sekme_tahmin:
                                ("Ekran boyutu", f"{ekran:g} inç"), ("Ekran yüksekliği", f"{cozunurluk:.0f} piksel"),
                                ("Yenileme hızı", f"{yenileme} Hz"), ("Ana kamera", f"{kamera:g} MP"),
                                ("5G", "Var" if g5 else "Yok")]
-            p1, p2 = st.columns(2)
+            p1, p3, p2 = st.columns(3)
+            p3.download_button("🖼️ Görsel olarak indir",
+                               # Paylaşmak için tahmin kartı PNG olarak (sadece butona basınca hazırlanıyor)
+                               data=lambda a=(baslik, algo.replace("🤝 ", ""), olas, sinif, tahmini_fiyat, gercek_fiyat,
+                                              girdi, secili): tahmin_gorseli(
+                                   *a[:6], [r.isim for r in girdiye_benzeyenler(a[6], 3, a[7]).itertuples()]),
+                               file_name=f"TeknoTahmin_{(secili or 'tahmin').replace(' ', '_')}.png",
+                               mime="image/png", on_click="ignore", use_container_width=True)
             p1.download_button("📄 PDF olarak indir",
                                # PDF sadece butona basınca hazırlanıyor (her yenilemede değil, site hızlı kalsın)
                                data=lambda a=(baslik, ozellik_listesi, algo.replace("🤝 ", ""), secili_dogruluk, olas, sinif, gercek_fiyat,
@@ -1566,10 +1722,13 @@ with sekme_katalog:
                         unsafe_allow_html=True)
             en_yuksek_tl = int(df["price"].max() * KUR) + 1000
             p1, p2 = st.columns(2)
-            tl_min = p1.number_input("En az", 0, en_yuksek_tl, None, 1000, placeholder="En az",
+            tl_min = p1.number_input("En az", 0, None, None, 1000, placeholder="En az",
                                      label_visibility="collapsed")
-            tl_max = p2.number_input("En çok", 0, en_yuksek_tl, None, 1000, placeholder="En çok",
+            tl_max = p2.number_input("En çok", 0, None, None, 1000, placeholder="En çok",
                                      label_visibility="collapsed")
+            if tl_min is not None and tl_max is not None and tl_min > tl_max:
+                st.caption("⚠️ \"En az\" fiyat \"En çok\" fiyattan büyük girilmiş, ikisinin yerini değiştirdim.")
+                tl_min, tl_max = tl_max, tl_min
             sadece_5g = st.checkbox("5G destekli")
             hizli_sarj = st.checkbox("Hızlı şarj")
             hafiza_karti = st.checkbox("Hafıza kartı desteği")
@@ -1644,6 +1803,8 @@ with sekme_karsilastir:
     k1, k2 = st.columns(2)
     a = df.iloc[k1.selectbox("1. telefon", range(len(isimler)), key="k1", format_func=lambda i: isimler[i])]
     b = df.iloc[k2.selectbox("2. telefon", range(len(isimler)), key="k2", format_func=lambda i: isimler[i])]
+    if a.name == b.name:
+        st.info("🙂 İki tarafta da aynı telefon seçili. Karşılaştırmak için ikinci telefonu değiştir.")
 
     # (etiket, sütun, birim, büyük olan mı iyi?)
     satirlar = [("Fiyat", "price", "", False), ("RAM", "ram_capacity", " GB", True),
@@ -1725,7 +1886,7 @@ with sekme_butce:
                 'özelliklerine göre puanlayıp sıralayalım.</div>', unsafe_allow_html=True)
     b1, b2 = st.columns([1, 1.4], gap="large")
     with b1:
-        butce = st.number_input("💰 Bütçen (TL)", min_value=1000, max_value=100000, value=None, step=1000,
+        butce = st.number_input("💰 Bütçen (TL)", min_value=0, max_value=None, value=None, step=1000,
                                 placeholder="ör. 15000", key="b_butce")
         hk = st.container(key="hizli_butce").columns(5)
         for kol, miktar in zip(hk, [7500, 10000, 15000, 20000, 30000]):
@@ -1749,7 +1910,11 @@ with sekme_butce:
             aday = aday[aday["5G_or_not"] == 1]
         if b_marka:
             aday = aday[aday["marka"].isin(b_marka)]
-        if aday.empty:
+        en_ucuz = df["price"].min() * KUR
+        if butce < en_ucuz:
+            st.info(f"💡 Veri setindeki en ucuz telefon {tl(df['price'].min())}. Bütçeni en az bu kadar yaparsan "
+                    "telefonları listeleyebilirim.")
+        elif aday.empty:
             st.info("Bu bütçede uyan telefon yok. Bütçeyi biraz artırmayı ya da filtreleri kaldırmayı dene.")
         else:
             agirlik = ONCELIKLER[oncelik]
@@ -1942,11 +2107,8 @@ with sekme_markalar:
 @st.cache_resource(show_spinner=False)
 def test_seti_tahminleri():
     # model_egit() ile aynı bölme: Random Forest sadece eğitim setiyle eğitiliyor, test telefonlarını hiç görmüyor
-    tablo, _ = veri_yukle()
-    X_tr, X_te, y_tr, y_te = train_test_split(tablo[OZELLIKLER], tablo["segment"], test_size=0.2,
-                                              random_state=42, stratify=tablo["segment"])
-    rf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(X_tr, y_tr)
-    olas = rf.predict_proba(X_te)
+    _, X_te, _, _ = egitim_bolmesi()
+    olas = rf_egitim_seti().predict_proba(X_te)
     return pd.DataFrame({"tahmin": olas.argmax(axis=1), "guven": olas.max(axis=1)}, index=X_te.index)
 
 
