@@ -984,12 +984,58 @@ div:has(> input[role="combobox"]), [data-testid="stSelectbox"] div:has(> div > i
 [data-testid="stButtonGroup"] button[aria-checked="true"], [data-testid="stButtonGroup"] button[aria-pressed="true"] {
   background: #ede9fe !important; border-color: #7c3aed !important; }
 [data-testid="stButtonGroup"] button[aria-checked="true"] p { color: #5b21b6 !important; }
-[data-testid="stRadioOption"] > div:first-child { background-color: #ffffff !important; border: 1px solid rgba(30,27,75,.35); }
-[data-testid="stCheckbox"] label > div:first-child, [data-testid="stToggle"] label > div:first-child { border-color: rgba(30,27,75,.35) !important; }
 .sesli button { color: #1d1b33 !important; } #sesli-durum { color: #4a4766 !important; }
 .stApp::after { filter: invert(1); }
 .tablo td.kazanan, .firsat { color: #047857 !important; }
 .radar line, .radar polygon, .radar circle { stroke: rgba(30,27,75,.18); }
+/* ---- Aydınlık tema: temiz beyaz zemin, okunur renkler ---- */
+.stApp { background: linear-gradient(160deg, #f5f3ff 0%, #eef2ff 50%, #fdf2f8 100%) !important; }
+.stApp::before { opacity: .14 !important; filter: blur(10px) saturate(.9) !important; }
+.stApp::after { opacity: .1 !important; }
+.block-container { background: rgba(255,255,255,.97) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  border-color: #e9e5fb !important; box-shadow: 0 28px 80px rgba(76,61,160,.13), 0 2px 8px rgba(76,61,160,.05) !important; }
+.block-container::before { opacity: .55; }
+.logo { background-image: linear-gradient(90deg, #7c3aed, #db2777, #2563eb, #7c3aed) !important; }
+/* Segment renkleri beyaz zeminde koyulaşıyor (pastel tonlar beyaz üstünde okunmuyordu) */
+[style*="--renk:#34d399"] { --renk: #059669 !important; }
+[style*="--renk:#60a5fa"] { --renk: #2563eb !important; }
+[style*="--renk:#a78bfa"] { --renk: #7c3aed !important; }
+[style*="--renk:#f472b6"] { --renk: #db2777 !important; }
+[style*="color:#34d399"] { color: #059669 !important; }
+[style*="color:#60a5fa"] { color: #2563eb !important; }
+[style*="color:#a78bfa"] { color: #7c3aed !important; }
+[style*="color:#f472b6"] { color: #db2777 !important; }
+/* Kartlar: beyaz, ince çerçeve, yumuşak gölge, üstte segment rengi */
+.kart, .mini-kart, .oyun-kart, .shap, .neden, .oyun-skor { background: #ffffff !important; border: 1px solid #ebe8f7 !important;
+  box-shadow: 0 1px 2px rgba(30,27,75,.04), 0 8px 22px rgba(30,27,75,.06) !important; }
+.kart { border-top: 3px solid var(--renk) !important; }
+.kart:hover, .mini-kart:hover { box-shadow: 0 14px 32px rgba(76,61,160,.14) !important;
+  border-color: color-mix(in srgb, var(--renk) 45%, #ebe8f7) !important; }
+.kart .fiyat, .mini-fiyat, .oyun-skor b { color: #1d1b33 !important; }
+.kart .fiyat small { color: #8b88a8 !important; }
+.kart ul, .mini-bilgi { color: #4a4766 !important; }
+.ozellik { background: #f3f1fb !important; color: #4a4766 !important; }
+.rozet { background: color-mix(in srgb, var(--renk) 9%, #fff) !important; border-color: color-mix(in srgb, var(--renk) 35%, #fff) !important; }
+.sonuc { background: linear-gradient(135deg, color-mix(in srgb, var(--renk) 11%, #fff), #ffffff 70%) !important;
+  border: 1px solid color-mix(in srgb, var(--renk) 35%, #fff) !important; box-shadow: 0 10px 28px color-mix(in srgb, var(--renk) 13%, transparent) !important; }
+.cip { background: #f5f3ff !important; border-color: #ddd6fe !important; color: #4c1d95 !important; }
+.butce-puan { color: #ffffff !important; background: linear-gradient(135deg, #7c3aed, #db2777) !important; }
+.firsat { color: #047857 !important; background: #ecfdf5 !important; border-color: #6ee7b7 !important; }
+.marka-serit, .cetvel .serit { box-shadow: inset 0 0 0 1px rgba(30,27,75,.06); }
+.cubuk .iz, .shap-iz { background: #f1effa !important; }
+.model-tablo tr.secili td { background: #f3efff !important; }
+.tablo tr:hover td { background: #faf9ff; }
+/* Seçim kutuları: seçilmemiş beyaz + mor çerçeve, seçili dolu mor (önceden siyah daireler çıkıyordu) */
+[data-testid="stRadioOption"] > div > div:first-child { background: #ffffff !important; border: 2px solid #c4b5fd !important; }
+[data-testid="stRadioOption"][data-selected="true"] > div > div:first-child { background: #7c3aed !important; border-color: #7c3aed !important; }
+[data-testid="stRadioOption"][data-selected="true"] > div > div:first-child > div { background: #ffffff !important; }
+[data-testid="stCheckbox"] label > span + div { background: #ffffff !important; border: 2px solid #c4b5fd !important; }
+[data-testid="stCheckbox"] label[data-selected="true"] > span + div { background: #7c3aed !important; border-color: #7c3aed !important; }
+[data-baseweb="slider"] [role="slider"] { background: #7c3aed !important; box-shadow: 0 0 0 4px rgba(124,58,237,.18) !important; }
+.stButton button[kind="primary"], [data-testid="stBaseButton-primary"] { background: linear-gradient(135deg, #7c3aed, #a855f7) !important;
+  color: #ffffff !important; border: 0 !important; box-shadow: 0 6px 16px rgba(124,58,237,.28) !important; }
+.stButton button[kind="primary"] p, [data-testid="stBaseButton-primary"] p { color: #ffffff !important; }
+.stButton button:hover, [data-testid="stDownloadButton"] button:hover { border-color: #a78bfa !important; }
 .shap { background: rgba(30,27,75,.05) !important; border-color: rgba(30,27,75,.12) !important; }
 .shap-satir { color: #1d1b33 !important; } .shap-ozet, .shap-ad i { color: #4a4766 !important; }
 .shap-iz { background: rgba(30,27,75,.07) !important; } .shap-iz::after { background: rgba(30,27,75,.35) !important; }
