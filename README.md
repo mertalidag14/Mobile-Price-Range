@@ -660,6 +660,16 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 ![TeknoTahmin – Markalar](ekran_goruntuleri/7_markalar.jpg)
 
 
+**🎮 Hocayı Yen:** İnsan ile yapay zekânın 10 turluk segment tahmini yarışı (telefonun adı ve fiyatı gizli)
+
+![TeknoTahmin – Hocayı Yen](ekran_goruntuleri/8_hocayi_yen.jpg)
+
+
+**🕵️ Hata Galerisi:** Modelin test setinde yanıldığı telefonlar ve nedenleri (sınırda, marka etkisi, fırsat)
+
+![TeknoTahmin – Hata Galerisi](ekran_goruntuleri/9_hata_galerisi.jpg)
+
+
 > **Not:** Fiyatlar Smartprix (Hindistan) verisindeki Hindistan Rupisi (₹) fiyatları. Sitede bunları 1 ₹ ≈ 0,54 TL
 > kuruyla (XE orta kur, 19 Kasım 2026) TL'ye çevirerek gösteriyoruz. Marka adları ve logoları sahiplerine
 > ait (logolar: Simple Icons).
