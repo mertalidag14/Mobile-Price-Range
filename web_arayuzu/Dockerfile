@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py logolar.py gercek_telefonlar.csv ./
+COPY app.py aciklama.py logolar.py gercek_telefonlar.csv ./
 COPY .streamlit ./.streamlit
 COPY fontlar ./fontlar
 # Mert Ali Dağ'ın algoritması ZANEDUSCV (github.com/mertalidag14/ZANEDUSCV) dosyaları

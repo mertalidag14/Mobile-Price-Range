@@ -1,5 +1,7 @@
 # Mobile Price Range – Telefon Fiyat Segmenti Tahmini
 
+[![Testler](https://github.com/mertalidag14/Mobile-Price-Range/actions/workflows/testler.yml/badge.svg)](https://github.com/mertalidag14/Mobile-Price-Range/actions/workflows/testler.yml)
+
 Bu projede bir telefonun donanım özelliklerine (RAM, depolama, batarya, işlemci, ekran, kamera gibi) bakarak hangi fiyat grubunda olduğunu tahmin etmeye çalışıyoruz. Bunun için makine öğrenmesi modelleri kuruyor, birbirleriyle karşılaştırıyor ve en iyi çalışanı **TeknoTahmin** adında bir web sitesine koyuyoruz.
 
 🌐 Site: **https://teknotahmin-0iji.onrender.com**
@@ -278,6 +280,7 @@ Mobile-Price-Range/
 | Dosya | Açıklama |
 | :--- | :--- |
 | `app.py` | Sitenin Streamlit kodu |
+| `aciklama.py` | Tahmin başına SHAP (Shapley değerleri) hesabı |
 | `logolar.py` | Marka logoları (Simple Icons, tek renk SVG) |
 | `gercek_telefonlar.csv` | Sitedeki modelin eğitildiği gerçek telefon verisi |
 | `requirements.txt` | Sitenin ihtiyaç duyduğu kütüphaneler |
@@ -285,6 +288,21 @@ Mobile-Price-Range/
 | `.streamlit/config.toml` | Tema ve hız ayarları |
 | `fontlar/` | PDF raporda Türkçe karakterler için DejaVu fontu (açık lisanslı) |
 | `zaneduscv/` | Sitedeki model seçicide kullanılan, Mert Ali Dağ'ın geliştirdiği ZANEDUSCV algoritmasının dosyaları |
+
+### 🧪 `testler/` – Otomatik testler
+| Dosya | Ne kontrol ediyor? |
+| :--- | :--- |
+| `test_veri.py` | Veri setinde 980 telefon olduğunu, modelin kullandığı sütunların bulunduğunu, fiyatların pozitif olduğunu, aynı telefonun iki kez olmadığını ve çeyreklere bölünce 4 segmentin dengeli çıktığını |
+| `test_aciklama.py` | SHAP hesabını: lineer bir modelde katkıların tam olarak ağırlık × fark çıkması, katkıların toplamının tahmindeki değişime eşit olması, etkisiz bir özelliğin katkısının 0, simetrik özelliklerin katkısının eşit olması |
+| `test_zaneduscv.py` | ZANEDUSCV'nin sınıflandırmada ve regresyonda öğrenebildiğini, olasılıkların toplamının 1 olduğunu, scikit-learn araçlarıyla (clone, cross_val_score) çalıştığını ve aynı tohumla aynı sonucu verdiğini |
+| `test_site.py` | Sitenin tarayıcı olmadan (Streamlit AppTest) hatasız açıldığını, bütün sekmelerin olduğunu, paylaşma linkiyle tahmin ve SHAP grafiğinin çıktığını, oyunda bir tur oynanabildiğini ve hata galerisinin dolu olduğunu |
+
+Bu testler depoya her kod yüklendiğinde **GitHub Actions** ile GitHub'ın sunucusunda kendiliğinden çalışıyor (`.github/workflows/testler.yml`). README'nin en üstündeki rozet yeşilse bütün testler geçmiş demek. Bilgisayarda çalıştırmak için:
+
+```bash
+python -m pip install -r web_arayuzu/requirements.txt pytest
+pytest testler -v
+```
 
 ---
 
@@ -547,6 +565,8 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 - v2'ye kalibrasyon analizi, ensemble (oylama), TL fiyat tahmini (regresyon), Mert Ali Dağ'ın algoritması ZANEDUSCV, SVM, CatBoost, hiperparametre grafiği, marka bilgisi denemesi ve SHAP ile açıklanabilirlik
 - **TeknoTahmin** web sitesi (Streamlit + Docker, Render'da yayında)
 - Sitenin hızlandırılması ve UptimeRobot ile sürekli açık tutulması
+- Sitede her tahmin için SHAP grafiği, "Hocayı Yen" oyunu ve Hata Galerisi
+- 20 otomatik test ve GitHub Actions ile her yüklemede testlerin çalışması
 
 ### 🔭 Sonraki adımlar
 - `RandomizedSearchCV` ile daha geniş bir parametre aralığını daha hızlı taramak.
@@ -558,7 +578,7 @@ Hataların neredeyse hepsi yan yana segmentler arasında. Model "Düşük" bir t
 
 ## 🌐 Web Sitesi: TeknoTahmin
 
-Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Streamlit sitesine çeviriyoruz (canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 5 sekme var:
+Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Streamlit sitesine çeviriyoruz (canlı: **https://teknotahmin-0iji.onrender.com**). Sitede 9 sekme var:
 
 - **🔮 Fiyat Tahmini:** Telefonun adını yazıp (ör. "iPhone") modeli seçiyorsunuz, sabit özellikleri kendiliğinden geliyor. RAM ve depolamayı seçince fiyat segmenti, modelin ne kadar emin olduğu, segmentin gerçek fiyat aralığı ve o varyantın gerçek fiyatı çıkıyor. Telefonun adını hatırlamıyorsanız RAM, depolama, batarya, kamera, ekran, işlemci, şarj ve 5G'yi listeden seçebiliyorsunuz. Yazdığınız isme ve seçtiğiniz özelliklere uyan gerçek telefonlar sağda kartlar hâlinde hemen listeleniyor (ör. "iPhone" yazıp 4 GB RAM seçince sadece 4 GB RAM'li iPhone'lar çıkıyor). "Hızlı dene" butonlarıyla tek tıkla örnek bir telefon da deneyebiliyorsunuz.
 - **🛒 Telefon Kataloğu:** 970 gerçek telefon, gerçek fiyatları ve marka logolarıyla mağaza kartları hâlinde listeleniyor. Marka, segment, fiyat aralığı ve 5G filtreleri, sıralama, arama ve "modelin yanıldıkları" filtresi var. Kartlardaki "Karşılaştır" butonuyla iki telefonu seçip karşılaştırmaya geçebiliyorsunuz.
@@ -566,6 +586,8 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **💰 Bütçeme Göre:** Bütçeni ve önceliğini (dengeli, performans, kamera, batarya, depolama) seçince o fiyata kadar olan telefonları özelliklerine göre 100 üzerinden puanlayıp en iyi 6 tanesini gösteriyor.
 - **🧭 Telefon Önerici:** Bütçe, kullanım amacı (oyun, fotoğraf, günlük, iş), pil önemi, ekran büyüklüğü, 5G ve marka tercihi soruluyor. Cevaplara göre 970 telefon arasından en uygun 3 telefon, puanları, neden önerildikleri ve donanımlarına göre fiyatlarının uygun olup olmadığıyla birlikte gösteriliyor. Öneriler, verilen cevaplarla birlikte PDF olarak da indirilebiliyor.
 - **🏷️ Markalar:** En az 10 telefonu olan 17 marka; telefon sayısı, ortalama fiyat, ortalama donanım puanı, 5G oranı, segment dağılımı ve "marka primi" (gerçek fiyatın, donanıma göre beklenen fiyata oranı) ile "fiyatını en çok hak eden marka" sıralaması.
+- **🎮 Hocayı Yen:** İnsan ile yapay zekânın yarıştığı bir oyun. Modelin eğitimde hiç görmediği test telefonlarından rastgele 10 tanesi geliyor. Telefonun markası ve 10 özelliği görünüyor ama adı ve fiyatı gizli. Önce sen segmentini tahmin ediyorsun, sonra doğru cevap, telefonun adı, fiyatı ve Random Forest'ın tahmini açılıyor. Skor her turda güncelleniyor, 10 turun sonunda kimin kazandığı çıkıyor. Sunumda hocamıza ve sınıfa oynatmak için yaptık. Bir de ilginç bir nokta var: model markayı bilmiyor ama insan biliyor, yani marka etkisini insan yakalayabiliyor.
+- **🕵️ Hata Galerisi:** Random Forest'ın test setinde yanlış segment verdiği telefonların hepsi (194 telefondan 51'i). Her hatanın nedeni yazıyor: fiyatı bir segment sınırına %8'den yakınsa **📏 Sınırda**, donanımına göre beklenen fiyattan (ZANEDUSCV regresyon) pahalıysa **🏷️ Marka etkisi**, ucuzsa **💎 Fırsat**. Üstte hataların kaçının komşu segmentte olduğu (%94) ve her türden kaç tane olduğu görünüyor, hata türüne göre süzülebiliyor. Telefonlar modelin en emin olduğu hâlde yanıldığından başlayarak sıralanıyor.
 - **📊 Proje Hakkında:** Yöntem, ekip, model sonuçları ve modelin grafikleri (özellik önemi, karışıklık matrisi).
 
 ### ✨ Sitenin öne çıkan özellikleri
@@ -573,6 +595,7 @@ Gerçek telefon verisiyle eğittiğimiz modeli **TeknoTahmin** adında bir Strea
 - **Telefon adıyla arama:** "iPhone", "Galaxy S23" gibi bir isim yazınca uyan modeller listeleniyor. Model seçilince batarya, kamera, işlemci, ekran gibi sabit özellikleri kendiliğinden geliyor.
 - **Hızlı dene butonları:** iPhone 13, Galaxy S23, Redmi Note 12 gibi hazır örneklere tek tıkla basınca model, RAM ve depolama seçilip tahmin hemen çıkıyor. Siteyi ilk açan kişi hiçbir şey yazmadan deneyebiliyor.
 - **"Neden bu segment?" açıklaması:** Tahmin kartının altında, modelin kararını en çok etkileyen 3 özellik çıkıyor. Her özelliği tek tek ortalama bir telefonun değeriyle değiştirip modelin güveninin ne kadar düştüğüne bakıyoruz. Örneğin iPhone 13 için en büyük etki işlemci hızından geliyor.
+- **🔬 SHAP grafiği:** Tahminin altında, 10 özelliğin her birinin modelin kararını ne kadar etkilediği yeşil (bu segmenti destekliyor) ve kırmızı (karşı çıkıyor) çubuklarla gösteriliyor. Başlangıç noktası "ortalama telefon" (veri setindeki her özelliğin ortancası). 10 özellik için 2^10 = 1024 kombinasyonun hepsi denendiği için Shapley değerleri yaklaşık değil, tam hesaplanıyor ve hepsinin toplamı güvendeki değişime eşit çıkıyor. Yöntem modelden bağımsız olduğu için model seçicide hangi model seçiliyse (Random Forest, KNN, XGBoost, ZANEDUSCV ya da Ortak karar) onun kararı açıklanıyor. Analizde SHAP'ı notebook'ta kullanmıştık, şimdi her kullanıcı kendi telefonu için görebiliyor. Hesap `web_arayuzu/aciklama.py` dosyasında, testleri de `testler/test_aciklama.py`'de.
 - **Fiyat cetveli:** Ucuzdan pahalıya giden renkli bir çubukta, modelin tahmini ve telefonun gerçek fiyatı işaretli olarak görünüyor.
 - **Seçmeli özellikler:** Telefonun adını bilmeyen kişi RAM, depolama, batarya, kamera, ekran boyutu, yenileme hızı, işlemci, şarj ve 5G'yi listeden seçiyor. Listedeki değerler veri setindeki telefonların ortalamasından geliyor, böylece kimse gerçekte olmayan bir değer giremiyor.
 - **Anında süzülen telefon kartları:** Yazılan isme ve seçilen özelliklere uyan gerçek telefonlar sağda kartlar hâlinde hemen güncelleniyor.

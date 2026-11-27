@@ -7,6 +7,7 @@ import base64
 import json
 import math
 import random
+
 from pathlib import Path
 from urllib.parse import quote
 
@@ -22,6 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 from zaneduscv import ZANEDUSCVClassifier, ZANEDUSCVRegressor  # Mert Ali Dağ'ın algoritması: github.com/mertalidag14/ZANEDUSCV
 
+from aciklama import shapley_degerleri
 from logolar import LOGOLAR
 
 TABAN = Path(__file__).resolve().parent
@@ -279,6 +281,38 @@ border-bottom: 1px dashed rgba(255,255,255,.08); }}
 .neden li i {{ color: rgba(255,255,255,.55); font-style: normal; }}
 .neden .etki {{ color: var(--renk); font-weight: 800; white-space: nowrap; }}
 .neden-not {{ color: rgba(255,255,255,.5); font-size: .72rem; margin-top: .4rem; }}
+.shap {{ margin-top: .4rem; padding: .8rem 1rem; border-radius: 14px; background: rgba(0,0,0,.18); border: 1px solid rgba(255,255,255,.1); }}
+.shap-ozet {{ color: rgba(255,255,255,.75); font-size: .85rem; margin-bottom: .55rem; line-height: 1.45; }}
+.shap-satir {{ display: grid; grid-template-columns: minmax(150px, 1.1fr) 2fr 56px; gap: .6rem; align-items: center; padding: .22rem 0; font-size: .86rem; color: #fff; }}
+.shap-ad i {{ color: rgba(255,255,255,.55); font-style: normal; }}
+.shap-iz {{ position: relative; height: 12px; border-radius: 6px; background: rgba(255,255,255,.06); }}
+.shap-iz::after {{ content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: rgba(255,255,255,.35); }}
+.shap-cubuk {{ position: absolute; top: 0; bottom: 0; border-radius: 6px; }}
+.shap-cubuk.arti {{ left: 50%; background: #34d399; }}
+.shap-cubuk.eksi {{ right: 50%; background: #f87171; }}
+.shap-deger {{ text-align: right; font-weight: 800; white-space: nowrap; }}
+.shap-deger.arti {{ color: #34d399; }}
+.shap-deger.eksi {{ color: #f87171; }}
+@media (max-width: 640px) {{ .shap-satir {{ grid-template-columns: 1fr 1.1fr 48px; font-size: .8rem; }} }}
+.oyun-giris {{ text-align: center; font-size: 3rem; margin: 1.2rem 0 1rem; color: #fff; }}
+.oyun-giris span {{ font-size: 1rem; color: rgba(255,255,255,.75); }}
+.oyun-skor {{ display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 1.2rem; border-radius: 18px; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.1); margin-bottom: .8rem; }}
+.oyun-skor > div {{ display: flex; flex-direction: column; align-items: center; color: rgba(255,255,255,.75); font-size: .85rem; }}
+.oyun-skor b {{ font-size: 2rem; color: #fff; line-height: 1.1; }}
+.oyun-skor .tur {{ font-weight: 800; color: #a78bfa; font-size: 1rem; }}
+.oyun-kart {{ padding: 1rem 1.2rem; border-radius: 18px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); }}
+.oyun-marka {{ font-weight: 800; font-size: 1.2rem; color: #fff; margin-bottom: .4rem; }}
+.oyun-marka span {{ font-weight: 400; font-size: .8rem; color: rgba(255,255,255,.55); }}
+.oyun-kart ul {{ list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.4rem; }}
+.oyun-kart li {{ display: flex; justify-content: space-between; padding: .32rem 0; color: rgba(255,255,255,.8); border-bottom: 1px dashed rgba(255,255,255,.08); font-size: .92rem; }}
+.oyun-kart li b {{ color: #fff; }}
+.oyun-cevaplar {{ display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; margin-top: .6rem; color: #fff; }}
+.hata-kart {{ margin-bottom: 1rem; }}
+.hata-kart .fiyat {{ color: var(--renk); font-weight: 900; font-size: 1.3rem; margin: .2rem 0 .4rem; }}
+.hata-satir {{ color: rgba(255,255,255,.8); font-size: .86rem; margin: .15rem 0; }}
+.hata-tur {{ display: inline-block; margin-top: .5rem; padding: .12rem .6rem; border-radius: 99px; font-size: .78rem; font-weight: 700; background: rgba(167,139,250,.18); color: #ddd6fe; }}
+.hata-aciklama {{ color: rgba(255,255,255,.7); font-size: .8rem; margin: .3rem 0; }}
+@media (max-width: 640px) {{ .oyun-kart ul {{ grid-template-columns: 1fr; }} .oyun-giris {{ font-size: 2.2rem; }} }}
 .radar {{ display: flex; flex-direction: column; align-items: center; }}
 .lejant {{ display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center; color: #fff; font-size: .9rem; margin-top: .3rem; }}
 .lejant i {{ display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: .4rem; vertical-align: -1px; }}
@@ -636,6 +670,40 @@ def neden_bu_segment(girdi, sinif, mdl):
               'bu segmente olan güveni kaç puan düşerdi.</div></div>')
 
 
+# SHAP (Shapley değerleri): her özelliğin tahmine katkısı.
+# 10 özellik için 2^10 = 1024 kombinasyonun hepsi denendiği için değerler yaklaşık değil, tam hesaplanıyor.
+# Karşılaştırma noktası "ortalama telefon" (veri setindeki her özelliğin ortancası).
+# Yöntem modelden bağımsız, yani model seçicide hangi model seçiliyse onun kararı açıklanıyor.
+@st.cache_data(show_spinner=False, max_entries=300)
+def shap_degerleri(algo, x, sinif):
+    # Hesabın kendisi aciklama.py'de (testleri de orada)
+    mdl = MODELLER[algo][0]
+    return shapley_degerleri(lambda X: mdl.predict_proba(pd.DataFrame(X, columns=OZELLIKLER))[:, sinif],
+                             x, df[OZELLIKLER].median().to_numpy(dtype=float))
+
+
+def shap_grafigi(algo, girdi, sinif):
+    satir = girdi.iloc[0]
+    taban, phi, son = shap_degerleri(algo, tuple(float(v) for v in satir), sinif)
+    en_buyuk = max(float(np.abs(phi).max()), 1e-9)
+    cubuklar = ""
+    for i in np.argsort(-np.abs(phi)):
+        sutun, v = OZELLIKLER[i], float(phi[i])
+        ikon, ad, yaz = OZELLIK_ADI[sutun]
+        yon = "arti" if v >= 0 else "eksi"
+        puan = f"{v * 100:+.1f}".replace(".", ",")
+        cubuklar += (f'<div class="shap-satir"><span class="shap-ad">{ikon} {ad} <i>{yaz(satir[sutun])}</i></span>'
+                     f'<div class="shap-iz"><div class="shap-cubuk {yon}" style="width:{abs(v) / en_buyuk * 50:.1f}%"></div></div>'
+                     f'<span class="shap-deger {yon}">{puan}</span></div>')
+    seg = SEGMENTLER[sinif][0]
+    return ('<div class="bolum" style="margin-top:1rem">🔬 SHAP: her özellik tahmini ne kadar etkiledi?</div>'
+            f'<div class="shap"><div class="shap-ozet">Ortalama bir telefon için {algo.replace("🤝 ", "")} '
+            f'<b>{seg}</b> segmentine %{taban * 100:.0f} güven veriyordu. Bu telefonun özellikleriyle güven <b>%{son * 100:.0f}</b> oldu. '
+            'Yeşil çubuklar bu segmenti destekleyen, kırmızılar karşı çıkan özellikler. Sayılar puan; '
+            'hepsinin toplamı aradaki farka eşit (Shapley değerleri).</div>'
+            f'{cubuklar}</div>')
+
+
 PDF_MOR, PDF_GRI, PDF_YAZI = (91, 33, 182), (90, 90, 110), (30, 27, 46)
 
 
@@ -922,6 +990,16 @@ div:has(> input[role="combobox"]), [data-testid="stSelectbox"] div:has(> div > i
 .stApp::after { filter: invert(1); }
 .tablo td.kazanan, .firsat { color: #047857 !important; }
 .radar line, .radar polygon, .radar circle { stroke: rgba(30,27,75,.18); }
+.shap { background: rgba(30,27,75,.05) !important; border-color: rgba(30,27,75,.12) !important; }
+.shap-satir { color: #1d1b33 !important; } .shap-ozet, .shap-ad i { color: #4a4766 !important; }
+.shap-iz { background: rgba(30,27,75,.07) !important; } .shap-iz::after { background: rgba(30,27,75,.35) !important; }
+.shap-deger.arti { color: #047857 !important; } .shap-deger.eksi { color: #b91c1c !important; }
+.shap-cubuk.arti { background: #10b981 !important; } .shap-cubuk.eksi { background: #ef4444 !important; }
+.oyun-skor, .oyun-kart { background: rgba(30,27,75,.05) !important; border-color: rgba(30,27,75,.12) !important; }
+.oyun-giris, .oyun-skor b, .oyun-marka, .oyun-kart li b, .oyun-cevaplar { color: #1d1b33 !important; }
+.oyun-giris span, .oyun-skor > div, .oyun-marka span, .oyun-kart li, .hata-satir, .hata-aciklama { color: #4a4766 !important; }
+.oyun-kart li { border-bottom-color: rgba(30,27,75,.1) !important; } .oyun-skor .tur { color: #6d28d9 !important; }
+.hata-tur { background: #ede9fe !important; color: #5b21b6 !important; }
 """
 
 # ------------------------------------------------------------
@@ -1001,9 +1079,10 @@ with st.container(horizontal=True, key="marka_seridi", gap="small"):
         st.button(etiket, key=f"mb_{i}", on_click=marka_tikla, args=(m,), help=f"{m} telefonlarını göster")
 st.html("<style>" + "".join(marka_css) + "</style>")  # sadece stil: sayfada yer kaplamaz
 
-sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_markalar, sekme_hakkinda = st.tabs(
+(sekme_tahmin, sekme_katalog, sekme_karsilastir, sekme_butce, sekme_onerici, sekme_markalar, sekme_oyun,
+ sekme_hatalar, sekme_hakkinda) = st.tabs(
     ["🔮 Fiyat Tahmini", "🛒 Telefon Kataloğu", "⚖️ Karşılaştır", "💰 Bütçeme Göre", "🧭 Telefon Önerici",
-     "🏷️ Markalar", "📊 Proje Hakkında"])
+     "🏷️ Markalar", "🎮 Hocayı Yen", "🕵️ Hata Galerisi", "📊 Proje Hakkında"])
 # Katalogda ikinci telefona "Karşılaştır" basılınca sekmeyi sunucuyu beklemeden tarayıcıda hemen aç
 js_calistir("if(window.__karsHizli)return;window.__karsHizli=1;document.addEventListener('click',e=>{"
             "const b=e.target.closest('button');if(!b||b.innerText.trim()!=='⚖️ Karşılaştır')return;"
@@ -1235,6 +1314,7 @@ with sekme_tahmin:
             st.markdown('<div class="bolum" style="margin-top:1rem">🤖 Modeller ne diyor?</div>'
                         '<table class="tablo model-tablo"><tr><th>Model</th><th>Tahmin</th><th>Güven</th>'
                         f'<th>Test doğruluğu</th></tr>{satirlar}</table>', unsafe_allow_html=True)
+            st.markdown(shap_grafigi(algo, girdi, sinif), unsafe_allow_html=True)
 
             # Paylaşma linki ve PDF rapor
             baslik = (f"{secili} ({gb(ram)} RAM + {gb(hafiza)})" if secili else
@@ -1786,7 +1866,180 @@ with sekme_markalar:
                "önceliğin 100 üzerinden puanı. Marka primi, markanın telefonlarındaki oranların ortancası (medyan).")
 
 # ------------------------------------------------------------
-# 7) Proje hakkında
+# Test seti: oyun ve hata galerisi için (modelin eğitimde hiç görmediği 194 telefon)
+# ------------------------------------------------------------
+@st.cache_resource(show_spinner=False)
+def test_seti_tahminleri():
+    # model_egit() ile aynı bölme: Random Forest sadece eğitim setiyle eğitiliyor, test telefonlarını hiç görmüyor
+    tablo, _ = veri_yukle()
+    X_tr, X_te, y_tr, y_te = train_test_split(tablo[OZELLIKLER], tablo["segment"], test_size=0.2,
+                                              random_state=42, stratify=tablo["segment"])
+    rf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42).fit(X_tr, y_tr)
+    olas = rf.predict_proba(X_te)
+    return pd.DataFrame({"tahmin": olas.argmax(axis=1), "guven": olas.max(axis=1)}, index=X_te.index)
+
+
+def gizli_telefon_html(r):
+    # Oyunda telefonun adı ve fiyatı gizli, sadece markası ve özellikleri görünüyor
+    satirlar = "".join(f'<li><span>{ikon} {ad}</span><b>{yaz(getattr(r, "g5" if s == "5G_or_not" else s))}</b></li>'
+                       for s, (ikon, ad, yaz) in OZELLIK_ADI.items() if s in OZELLIKLER)
+    bilgi = LOGOLAR.get(r.brand_name)
+    marka_logo = logo(r.marka, 18) if bilgi and not bilgi[5] else ""
+    return (f'<div class="oyun-kart"><div class="oyun-marka">{marka_logo}{r.marka} <span>· model adı ve fiyatı gizli</span>'
+            f'</div><ul>{satirlar}</ul></div>')
+
+
+def oyunu_baslat():
+    test = test_seti_tahminleri()
+    st.session_state["oyun"] = {"sira": random.sample(list(test.index), 10), "tur": 0, "sen": 0, "yz": 0,
+                                "cevap": None}
+
+
+def oyun_cevapla(s):
+    o = st.session_state["oyun"]
+    if o["cevap"] is not None:
+        return
+    o["cevap"] = s
+    sira = o["sira"][o["tur"]]
+    gercek = int(df.at[sira, "segment"])
+    o["sen"] += int(s == gercek)
+    o["yz"] += int(test_seti_tahminleri().at[sira, "tahmin"] == gercek)
+
+
+def oyun_sonraki():
+    o = st.session_state["oyun"]
+    o["tur"] += 1
+    o["cevap"] = None
+
+
+@st.fragment
+def oyun_bolumu():
+    # Fragment: oyundaki tıklamalar sadece bu bölümü yeniler, sayfanın geri kalanı beklemez
+    o = st.session_state.get("oyun")
+    if o is None:
+        st.markdown('<div class="oyun-giris">🧑‍🏫 vs 🤖<br><span>10 telefon, 10 tur. Bakalım kim daha iyi tahmin edecek?'
+                    '</span></div>', unsafe_allow_html=True)
+        st.button("🎮 Oyunu başlat", on_click=oyunu_baslat, type="primary", use_container_width=True, key="oyun_basla")
+        return
+    skor = (f'<div class="oyun-skor"><div><span>🧑‍🏫 Sen</span><b>{o["sen"]}</b></div>'
+            f'<div class="tur">Tur {min(o["tur"] + 1, 10)}/10</div><div><span>🤖 Yapay zekâ</span><b>{o["yz"]}</b></div></div>')
+    if o["tur"] >= 10:
+        if o["sen"] > o["yz"]:
+            mesaj, renk = "🏆 Tebrikler, yapay zekâyı yendin!", "#34d399"
+        elif o["sen"] == o["yz"]:
+            mesaj, renk = "🤝 Berabere! Yapay zekâ kadar iyisin.", "#60a5fa"
+        else:
+            mesaj, renk = "🤖 Bu sefer yapay zekâ kazandı.", "#f472b6"
+        st.markdown(skor.replace(f'Tur 10/10', 'Bitti') +
+                    f'<div class="sonuc" style="--renk:{renk};text-align:center;margin-top:1rem"><div class="ana">{mesaj}</div>'
+                    f'<div class="aralik">Sen 10 telefonun {o["sen"]} tanesini, yapay zekâ {o["yz"]} tanesini bildi. '
+                    f'Modelin bu telefonlardaki genel doğruluğu %{DOGRULUK * 100:.0f}.</div></div>', unsafe_allow_html=True)
+        st.button("🔁 Tekrar oyna", on_click=oyunu_baslat, type="primary", use_container_width=True, key="oyun_tekrar")
+        return
+    sira = o["sira"][o["tur"]]
+    r = next(df.loc[[sira]].itertuples())
+    st.markdown(skor + gizli_telefon_html(r), unsafe_allow_html=True)
+    if o["cevap"] is None:
+        st.markdown('<div class="bolum">Sence bu telefon hangi fiyat segmentinde?</div>', unsafe_allow_html=True)
+        kolonlar = st.columns(4)
+        for s, kol in enumerate(kolonlar):
+            ad, ikon, _ = SEGMENTLER[s]
+            kol.button(f"{ikon} {ad}", key=f"oyun_s{s}", on_click=oyun_cevapla, args=(s,), use_container_width=True,
+                       help=f"Bu segmentteki telefonların fiyatı: {segment_araligi(s)}")
+        st.caption("Segmentlerin fiyat aralıkları: " + " · ".join(f"{SEGMENTLER[s][0]}: {segment_araligi(s)}"
+                                                                 for s in range(4)))
+        return
+    test = test_seti_tahminleri()
+    gercek, yz, guven = int(r.segment), int(test.at[sira, "tahmin"]), float(test.at[sira, "guven"])
+    sen = o["cevap"]
+    ad, ikon, renk = SEGMENTLER[gercek]
+    st.markdown(
+        f'<div class="sonuc" style="--renk:{renk};margin-top:.8rem"><div class="ust">Doğru cevap</div>'
+        f'<div class="ana">{ikon} {ad}</div><div class="aralik"><b>{r.isim}</b> · {tl(r.price)}</div>'
+        f'<div class="oyun-cevaplar"><div>🧑‍🏫 Sen: <b>{SEGMENTLER[sen][0]}</b> {"✅" if sen == gercek else "❌"}</div>'
+        f'<div>🤖 Yapay zekâ: <b>{SEGMENTLER[yz][0]}</b> (%{guven * 100:.0f} emin) {"✅" if yz == gercek else "❌"}</div>'
+        f'</div></div>', unsafe_allow_html=True)
+    st.button("Sonucu gör 🏁" if o["tur"] == 9 else "Sonraki telefon ➜", on_click=oyun_sonraki, type="primary",
+              use_container_width=True, key="oyun_sonraki")
+
+
+def hata_nedeni(r, beklenen):
+    # Fiyat bir segment sınırına %8'den yakınsa "sınırda", değilse donanımına göre pahalı mı ucuz mu
+    if min(abs(r.price - b) / b for b in SINIRLAR[1:4]) < 0.08:
+        return "📏 Sınırda", "Fiyatı segment sınırına çok yakın, küçük bir fark segmenti değiştiriyor."
+    if r.tahmin < r.segment:
+        return "🏷️ Marka etkisi", (f"Donanımına göre beklenen fiyat {tl(beklenen)}, gerçek fiyatı çok daha yüksek. "
+                                  "Fiyatı markası belirliyor.")
+    return "💎 Fırsat", f"Donanımına göre beklenen fiyat {tl(beklenen)}, gerçek fiyatı çok daha düşük. Ucuza güçlü telefon."
+
+
+@st.cache_data(show_spinner=False)
+def hata_tablosu():
+    test = test_seti_tahminleri()
+    t = df.loc[test.index].assign(tahmin=test["tahmin"], guven=test["guven"])
+    t["beklenen"] = np.exp(FIYAT_MODELI.predict(t[OZELLIKLER]))
+    hatalar = t[t["tahmin"] != t["segment"]].copy()
+    nedenler = [hata_nedeni(r, r.beklenen) for r in hatalar.itertuples()]
+    hatalar["tur"] = [n[0] for n in nedenler]
+    hatalar["aciklama"] = [n[1] for n in nedenler]
+    return hatalar.sort_values("guven", ascending=False), len(t)
+
+
+def hata_karti(r):
+    gercek, tahmin = SEGMENTLER[r.segment], SEGMENTLER[r.tahmin]
+    bilgi = LOGOLAR.get(r.brand_name)
+    marka_logo = logo(r.marka, 14) if bilgi and not bilgi[5] else ""
+    return (f'<div class="kart hata-kart" style="--renk:{gercek[2]}"><div class="isim">{marka_logo}{r.isim}</div>'
+            f'<div class="fiyat">{tl(r.price)}</div>'
+            f'<div class="hata-satir">Gerçek: <b style="color:{gercek[2]}">{gercek[1]} {gercek[0]}</b></div>'
+            f'<div class="hata-satir">Model: <b style="color:{tahmin[2]}">{tahmin[1]} {tahmin[0]}</b> (%{r.guven * 100:.0f} emin)</div>'
+            f'<div class="hata-tur">{r.tur}</div><div class="hata-aciklama">{r.aciklama}</div>'
+            f'<div class="hata-satir" style="opacity:.75">{r.ram_capacity:g} GB RAM · {gb_yaz(r.internal_memory)} · '
+            f'{r.processor_speed:g} GHz · {r.primary_camera_rear:g} MP</div></div>')
+
+
+@st.fragment
+def hata_galerisi_bolumu():
+    hatalar, toplam = hata_tablosu()
+    komsu = float((abs(hatalar["tahmin"] - hatalar["segment"]) == 1).mean())
+    sayilar = hatalar["tur"].value_counts()
+    m = st.columns(4)
+    for kol, ust, ana, alt in [
+            (m[0], "Yanıldığı telefon", f"{len(hatalar)} / {toplam}", "test setinde (eğitimde görmediği telefonlar)"),
+            (m[1], "Komşu segmentte yanılma", f"%{komsu * 100:.0f}", "hataların yan segmentte olma oranı"),
+            (m[2], "🏷️ Marka etkisi", f"{sayilar.get('🏷️ Marka etkisi', 0)}", "donanımından pahalı satılan"),
+            (m[3], "📏 Sınırda / 💎 Fırsat", f"{sayilar.get('📏 Sınırda', 0)} / {sayilar.get('💎 Fırsat', 0)}",
+             "sınıra yakın / donanımından ucuz")]:
+        kol.markdown(f'<div class="sonuc" style="--renk:#a78bfa;padding:1rem 1.2rem"><div class="ust">{ust}</div>'
+                     f'<div class="ana" style="font-size:1.5rem">{ana}</div><div class="aralik">{alt}</div></div>',
+                     unsafe_allow_html=True)
+    secim = st.segmented_control("Hata türü", ["Hepsi", "🏷️ Marka etkisi", "📏 Sınırda", "💎 Fırsat"],
+                                 default="Hepsi", key="hata_turu") or "Hepsi"
+    gosterilen = hatalar if secim == "Hepsi" else hatalar[hatalar["tur"] == secim]
+    st.caption(f"{len(gosterilen)} telefon · modelin en emin olduğu hâlde yanıldıkları önde")
+    kolonlar = st.columns(3)
+    for i, r in enumerate(gosterilen.itertuples()):
+        kolonlar[i % 3].markdown(hata_karti(r), unsafe_allow_html=True)
+
+
+with sekme_oyun:
+    st.markdown('<div class="baslik">Hocayı Yen: İnsan vs Yapay Zekâ</div>'
+                '<div class="alt">Modelin eğitimde hiç görmediği telefonlardan rastgele 10 tanesi geliyor. Telefonun '
+                'markasını ve özelliklerini görüyorsun ama adını ve fiyatını görmüyorsun. Sen segmentini tahmin ediyorsun, '
+                'Random Forest da tahmin ediyor. Hangi telefonu kimin bildiği her turda açılıyor. Bir avantajın var: '
+                'model markaları bilmiyor, sen biliyorsun!</div>', unsafe_allow_html=True)
+    oyun_bolumu()
+
+with sekme_hatalar:
+    st.markdown('<div class="baslik">Hata Galerisi: Model nerede yanılıyor?</div>'
+                '<div class="alt">Random Forest\'ın test setinde yanlış tahmin ettiği telefonların hepsi burada. Her '
+                'hatanın yanında nedeni var: fiyatı segment sınırına çok yakınsa <b>sınırda</b>, donanımına göre beklenen '
+                'fiyattan (ZANEDUSCV regresyon) çok pahalıysa <b>marka etkisi</b>, çok ucuzsa <b>fırsat</b>.</div>',
+                unsafe_allow_html=True)
+    hata_galerisi_bolumu()
+
+# ------------------------------------------------------------
+# 9) Proje hakkında
 # ------------------------------------------------------------
 with sekme_hakkinda:
     st.markdown('<div class="baslik">Proje Hakkında</div>', unsafe_allow_html=True)
